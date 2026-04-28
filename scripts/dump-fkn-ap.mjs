@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { argv } from 'node:process';
 import { extractCSV } from '../src/csv/extractor.ts';
 import { parseFKNAp } from '../src/parsers/fkn-ap.ts';
+import { parseFKNAr } from '../src/parsers/fkn-ar.ts';
 
 const path = argv[2];
 if (!path) { console.error('Usage: dump-fkn-ap.mjs <path>'); process.exit(1); }

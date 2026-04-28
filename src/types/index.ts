@@ -7,4 +7,5 @@ export type {
   ParseWarning,
 } from './parse-result.js';
 export type { Payable, PaymentStatus } from './payable.js';
+export type { Receivable, DueDateSource } from './receivable.js';
 export type { DailyTotal } from './daily-total.js';

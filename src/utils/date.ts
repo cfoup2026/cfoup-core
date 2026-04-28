@@ -33,6 +33,21 @@ export function parseDDMMYYYYtoUTC(s: string): Date | null {
 }
 
 /**
+ * Converte uma string `DD/MM/YY` para Date em UTC.
+ * Convenção de século (igual ao SQL Server padrão): YY em 00–79 → 2000+YY,
+ * YY em 80–99 → 1900+YY. Cobre 1980–2079 — suficiente pra dados financeiros
+ * recentes; sistemas com datas anteriores precisam usar DD/MM/YYYY.
+ */
+export function parseDDMMYYtoUTC(s: string): Date | null {
+  if (typeof s !== 'string') return null;
+  const m = /^(\d{2})\/(\d{2})\/(\d{2})$/.exec(s.trim());
+  if (m === null) return null;
+  const yy = Number(m[3]);
+  const year = yy <= 79 ? 2000 + yy : 1900 + yy;
+  return buildUTCDate(year, Number(m[2]), Number(m[1]));
+}
+
+/**
  * Retorna um Date em UTC pra um dia anterior (ou posterior, com `delta`
  * negativo) ao Date informado. O Date retornado também aponta pra 00:00 UTC.
  */

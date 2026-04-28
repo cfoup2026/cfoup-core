@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import {
   addUTCDays,
   parseDDMMYYYYtoUTC,
+  parseDDMMYYtoUTC,
   parseYYYYMMDDtoUTC,
 } from '../../src/utils/date.js';
 
@@ -96,6 +97,38 @@ describe('parseDDMMYYYYtoUTC', () => {
     expect(parseDDMMYYYYtoUTC('30/02/2026')).toBeNull();
     expect(parseDDMMYYYYtoUTC('32/01/2026')).toBeNull();
     expect(parseDDMMYYYYtoUTC('01/13/2026')).toBeNull();
+  });
+});
+
+describe('parseDDMMYYtoUTC', () => {
+  it('YY 00-79 vira 2000+YY (2026)', () => {
+    expect(parseDDMMYYtoUTC('03/01/26')?.toISOString()).toBe(
+      '2026-01-03T00:00:00.000Z',
+    );
+    expect(parseDDMMYYtoUTC('15/04/79')?.toISOString()).toBe(
+      '2079-04-15T00:00:00.000Z',
+    );
+  });
+
+  it('YY 80-99 vira 1900+YY (1995)', () => {
+    expect(parseDDMMYYtoUTC('15/04/80')?.toISOString()).toBe(
+      '1980-04-15T00:00:00.000Z',
+    );
+    expect(parseDDMMYYtoUTC('31/12/99')?.toISOString()).toBe(
+      '1999-12-31T00:00:00.000Z',
+    );
+  });
+
+  it('rejeita formato inválido', () => {
+    expect(parseDDMMYYtoUTC('03/01/2026')).toBeNull();
+    expect(parseDDMMYYtoUTC('3/1/26')).toBeNull();
+    expect(parseDDMMYYtoUTC('00/00/00')).toBeNull();
+    expect(parseDDMMYYtoUTC('')).toBeNull();
+  });
+
+  it('rejeita data inexistente', () => {
+    expect(parseDDMMYYtoUTC('30/02/26')).toBeNull();
+    expect(parseDDMMYYtoUTC('31/04/26')).toBeNull();
   });
 });
 

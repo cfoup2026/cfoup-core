@@ -5,6 +5,15 @@ export type PaymentStatus = 'open' | 'partial' | 'paid' | 'overpaid';
  * Conta a pagar individual extraída de um relatório AP.
  * Datas sempre em UTC. `amount` e `amountPaid` sempre não-negativos
  * (sinais virtuais vivem no campo `status`, não em `amount`).
+ *
+ * TODO [refactor 2026-04-29]: adicionar `dueDateSource: DueDateSource` aqui
+ * pra simetria com Receivable. Hoje a marca de "data inferida vs explícita"
+ * existe só no AR (introduzida em 2026-04-28). Quando migrar, atualizar:
+ *   - este tipo
+ *   - src/parsers/fkn-ap.ts (setar 'inferred_from_issue_date' em A VISTA,
+ *     'explicit' caso contrário)
+ *   - tests/parsers/fkn-ap.test.ts (asserts em dueDateSource)
+ *   - reference_fkn_format.md (memória)
  */
 export interface Payable {
   /** Identificador estável dentro do parser (não persistente entre execuções). */
