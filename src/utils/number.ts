@@ -24,3 +24,28 @@ export function parseBRLNumber(s: string): number | null {
   if (!Number.isFinite(n)) return null;
   return n;
 }
+
+/**
+ * Variante de `parseBRLNumber` que aceita sinal negativo opcional na frente.
+ * Espaços entre o sinal e o número também são tolerados (ex: "- 1.234,56").
+ *
+ *   "-12,34"     -> -12.34
+ *   "- 1.234,56" -> -1234.56
+ *   "12,34"      -> 12.34   (sem sinal: positivo, igual a parseBRLNumber)
+ *
+ * Casos onde o sinal vive numa coluna separada (ex: extrato CEF com C/D)
+ * NÃO devem usar este helper — o sinal "lógico" vive no tipo de domínio
+ * (`direction`, `movementType`, etc), não na string numérica.
+ */
+export function parseSignedBRLNumber(s: string): number | null {
+  if (typeof s !== 'string') return null;
+  const trimmed = s.trim();
+  if (trimmed === '') return null;
+
+  const negative = trimmed.startsWith('-');
+  const body = negative ? trimmed.slice(1).trimStart() : trimmed;
+  const value = parseBRLNumber(body);
+  if (value === null) return null;
+  if (value === 0) return 0;
+  return negative ? -value : value;
+}

@@ -9,3 +9,10 @@ export type {
 export type { Payable, PaymentStatus } from './payable.js';
 export type { Receivable, DueDateSource } from './receivable.js';
 export type { DailyTotal } from './daily-total.js';
+export type {
+  Sale,
+  SaleMovementType,
+  SaleMovementTypeSource,
+  MarginPercentSource,
+} from './sale.js';
+export type { SaleAggregate, SaleAggregateScope } from './sale-aggregate.js';
