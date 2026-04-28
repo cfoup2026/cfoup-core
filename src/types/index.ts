@@ -24,3 +24,12 @@ export type {
   DRESubtotal,
   DREValueSource,
 } from './dre.js';
+export type {
+  BalanceSheetEntry,
+  BalanceSheetEntryKind,
+  BalanceSheetLineItem,
+  BalanceSheetSectionHeader,
+  BalanceSheetSubtotal,
+  BalanceSheetValueSource,
+  BalanceType,
+} from './balance-sheet.js';

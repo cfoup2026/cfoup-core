@@ -8,6 +8,13 @@ export interface ExtractedLine {
   lineIndex: number;
   /** Texto concatenado dos items dessa linha, ordenados por X. */
   text: string;
+  /**
+   * Posição X do primeiro item textual (não-vazio) da linha. Útil pra
+   * detectar nível de indent em layouts hierárquicos (ex: Balanço Kinlex).
+   * Opcional pra compatibilidade com fixtures sintéticas que criam
+   * ExtractedLine manualmente sem geometria.
+   */
+  xStart?: number;
 }
 
 /**
@@ -56,8 +63,14 @@ export async function extractTextLines(
             .replace(/\s+/g, ' ')
             .trim();
           if (text === '') continue;
+          const firstNonEmpty = items.find((c) => c.str.trim() !== '');
+          const xStart = firstNonEmpty?.x;
           lineIndex++;
-          out.push({ page: p, lineIndex, text });
+          out.push(
+            xStart === undefined
+              ? { page: p, lineIndex, text }
+              : { page: p, lineIndex, text, xStart },
+          );
         }
       } finally {
         page.cleanup();

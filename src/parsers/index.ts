@@ -11,4 +11,12 @@ export type {
   ParseKinlexDREResult,
   KinlexDREMetadata,
 } from './kinlex-dre.js';
+export {
+  parseKinlexBalanco,
+  parseKinlexBalancoFromLines,
+} from './kinlex-balanco.js';
+export type {
+  ParseKinlexBalancoResult,
+  KinlexBalancoMetadata,
+} from './kinlex-balanco.js';
 
