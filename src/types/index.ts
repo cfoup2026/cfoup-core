@@ -16,3 +16,11 @@ export type {
   MarginPercentSource,
 } from './sale.js';
 export type { SaleAggregate, SaleAggregateScope } from './sale-aggregate.js';
+export type {
+  DREEntry,
+  DREEntryKind,
+  DRELineItem,
+  DRESectionHeader,
+  DRESubtotal,
+  DREValueSource,
+} from './dre.js';
