@@ -6,3 +6,5 @@ export type {
   ParseError,
   ParseWarning,
 } from './parse-result.js';
+export type { Payable, PaymentStatus } from './payable.js';
+export type { DailyTotal } from './daily-total.js';
