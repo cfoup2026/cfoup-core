@@ -53,6 +53,26 @@ export const STANDARD_CATEGORIES: readonly StandardCategory[] = [
     active: true,
   },
   {
+    code: 'IN_INVOICED_REVENUE',
+    direction: 'inflow',
+    macroClass: 'revenue',
+    bucket: 'receita',
+    label: 'Faturamento (venda emitida)',
+    ownerFriendlyLabel: 'Venda faturada (NF emitida)',
+    description:
+      'Venda faturada via NF — não confundir com recebimento de cliente. ' +
+      'Receita reconhecida no DRE accrual; caixa só entra quando o CR liquidar.',
+    affectsRevenue: true,
+    affectsGrossMargin: false,
+    affectsEbitda: true,
+    affectsCashRunway: false,
+    affectsDebt: false,
+    affectsOwnerDistribution: false,
+    isRecurringCandidate: true,
+    requiresBreakdown: false,
+    active: true,
+  },
+  {
     code: 'IN_CARD_SETTLEMENT',
     direction: 'inflow',
     macroClass: 'revenue',

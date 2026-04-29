@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { Sale } from '../../src/types/index.js';
 import type {
   ClassificationResult,
   ClassificationStatus,
@@ -54,6 +55,18 @@ const CATEGORY_DISPATCH_CASES: ReadonlyArray<{
         amount: 1000,
         counterpartyName: 'Cliente Gamma',
         originalCategory: 'Adiantamento de cliente',
+      }),
+  },
+  {
+    code: 'IN_INVOICED_REVENUE',
+    build: () =>
+      makeTx({
+        id: 'tc_in_invoiced',
+        sourceSystem: 'sales',
+        direction: 'inflow',
+        amount: 4250,
+        counterpartyName: 'Cliente Alpha LTDA',
+        documentNumber: 'NF-12001',
       }),
   },
   {
@@ -495,10 +508,10 @@ const CATEGORY_DISPATCH_CASES: ReadonlyArray<{
 
 /* ─────────── Testes ─────────── */
 
-describe('classifyTransaction — despacho de cada uma das 41 categorias', () => {
-  it('lista cobre exatamente as 41 categorias', () => {
+describe('classifyTransaction — despacho de cada uma das 42 categorias', () => {
+  it('lista cobre exatamente as 42 categorias', () => {
     const codes = new Set(CATEGORY_DISPATCH_CASES.map((c) => c.code));
-    expect(codes.size).toBe(41);
+    expect(codes.size).toBe(42);
     for (const cat of STANDARD_CATEGORIES) {
       expect(codes.has(cat.code)).toBe(true);
     }
@@ -682,6 +695,116 @@ describe('calculateConfidenceLevel', () => {
     expect(calculateConfidenceLevel(0)).toBe('low');
     expect(calculateConfidenceLevel(0.3)).toBe('low');
     expect(calculateConfidenceLevel(0.5999)).toBe('low');
+  });
+});
+
+describe('Sales — dispatch dedicado e affectors do IN_INVOICED_REVENUE', () => {
+  it('sourceSystem=sales + inflow → IN_INVOICED_REVENUE classified', () => {
+    const tx = makeTx({
+      id: 'sl_in_1',
+      sourceSystem: 'sales',
+      direction: 'inflow',
+      amount: 4250,
+      counterpartyName: 'Cliente Alpha LTDA',
+      documentNumber: 'NF-12001',
+    });
+    const r = classifyTransaction(tx);
+    expect(r.standardCategoryCode).toBe('IN_INVOICED_REVENUE');
+    expect(r.bucket).toBe('receita');
+    expect(r.status).toBe('classified');
+    expect(r.classificationMethod).toBe('source_mapping');
+  });
+
+  it('sourceSystem=sales + outflow (devolução) → OUT_REFUND_CUSTOMER', () => {
+    const tx = makeTx({
+      id: 'sl_out_1',
+      sourceSystem: 'sales',
+      direction: 'outflow',
+      amount: 320,
+      counterpartyName: 'Cliente Beta SA',
+      documentNumber: 'NF-12015',
+    });
+    const r = classifyTransaction(tx);
+    expect(r.standardCategoryCode).toBe('OUT_REFUND_CUSTOMER');
+    expect(r.bucket).toBe('deducoes');
+    expect(r.status).toBe('classified');
+  });
+
+  it('IN_INVOICED_REVENUE — affectsRevenue=true, affectsGrossMargin=false, affectsCashRunway=false', () => {
+    const cat = getCategoryByCode('IN_INVOICED_REVENUE')!;
+    expect(cat.affectsRevenue).toBe(true);
+    expect(cat.affectsGrossMargin).toBe(false);
+    expect(cat.affectsCashRunway).toBe(false);
+    expect(cat.bucket).toBe('receita');
+    expect(cat.macroClass).toBe('revenue');
+  });
+
+  it('IN_INVOICED_REVENUE não consome caixa — distinto de IN_CUSTOMER_RECEIPT', () => {
+    const invoiced = getCategoryByCode('IN_INVOICED_REVENUE')!;
+    const receipt = getCategoryByCode('IN_CUSTOMER_RECEIPT')!;
+    expect(invoiced.affectsCashRunway).toBe(false);
+    expect(receipt.affectsCashRunway).toBe(true);
+  });
+});
+
+describe('Sales — Sale.movementType="return" cai em OUT_REFUND_CUSTOMER, não em IN_INVOICED_REVENUE', () => {
+  // Cadeia completa Sale (parser FKN Vendas) → SourceTransaction → ClassificationResult.
+  // O mapeamento `movementType==='return' → direction='outflow'` espelha
+  // adaptSaleToSourceTransaction em scripts/classify-gregorutt.ts; replicado
+  // aqui inline (sem importar do scripts/) pra manter o teste autocontido
+  // dentro do escopo do core de classificação.
+
+  function makeSale(overrides: Partial<Sale>): Sale {
+    return {
+      id: 'sale_default',
+      issuedAt: utcDate(2026, 4, 10),
+      customerCode: 12345,
+      customerName: 'Cliente Beta SA',
+      invoiceNumber: 'NF-12015',
+      salesperson: 'DIRETA',
+      paymentTerm: '30 DDL',
+      amount: 320,
+      cost: 200,
+      marginPercent: 37.5,
+      marginPercentSource: 'computed',
+      movementType: 'sale',
+      movementTypeSource: 'explicit',
+      rawColumns: [],
+      ...overrides,
+    };
+  }
+
+  function adaptSaleForTest(s: Sale): SourceTransaction {
+    return {
+      id: `sale_${s.id}`,
+      companyId: 'co_test',
+      sourceSystem: 'sales',
+      transactionDate: s.issuedAt,
+      direction: s.movementType === 'return' ? 'outflow' : 'inflow',
+      amount: s.amount,
+      currency: 'BRL',
+      counterpartyName: s.customerName,
+      documentNumber: s.invoiceNumber,
+    };
+  }
+
+  it('Sale.movementType="return" → OUT_REFUND_CUSTOMER (não IN_INVOICED_REVENUE)', () => {
+    const sale = makeSale({ id: 's_return_1', movementType: 'return' });
+    const tx = adaptSaleForTest(sale);
+    const r = classifyTransaction(tx);
+    expect(r.standardCategoryCode).toBe('OUT_REFUND_CUSTOMER');
+    expect(r.standardCategoryCode).not.toBe('IN_INVOICED_REVENUE');
+    expect(r.bucket).toBe('deducoes');
+    expect(r.status).toBe('classified');
+  });
+
+  it('Sale.movementType="sale" → IN_INVOICED_REVENUE (companion positivo)', () => {
+    const sale = makeSale({ id: 's_sale_1', movementType: 'sale' });
+    const tx = adaptSaleForTest(sale);
+    const r = classifyTransaction(tx);
+    expect(r.standardCategoryCode).toBe('IN_INVOICED_REVENUE');
+    expect(r.bucket).toBe('receita');
+    expect(r.status).toBe('classified');
   });
 });
 

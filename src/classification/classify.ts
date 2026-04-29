@@ -862,10 +862,11 @@ function makePending(
  *  4. Reconciliação prévia (banco) — herda categoria.
  *  5. Cartão sem detalhe → pendência `card_payment_without_detail`.
  *  6. AR → IN_CUSTOMER_RECEIPT/ADVANCE.
- *  7. Heurísticas por keyword (AP/ERP/sales/manual/bank).
- *  8. Genérico relevante → pendência (com ou sem categoria sugerida).
- *  9. Banco sem match → pendência `unmatched_bank_transaction`.
- * 10. Fallback final → IN_OTHER/OUT_OTHER.
+ *  7. Sales → IN_INVOICED_REVENUE (inflow) ou OUT_REFUND_CUSTOMER (return).
+ *  8. Heurísticas por keyword (AP/ERP/manual/bank).
+ *  9. Genérico relevante → pendência (com ou sem categoria sugerida).
+ * 10. Banco sem match → pendência `unmatched_bank_transaction`.
+ * 11. Fallback final → IN_OTHER/OUT_OTHER.
  *
  * Sempre retorna `bucket` derivado do código quando há código atribuído,
  * `null` em pendências sem categoria.
@@ -926,7 +927,28 @@ export function classifyTransaction(
     return classifyAR(transaction);
   }
 
-  /* 7. Heurísticas */
+  /* 7. Sales — faturamento (NF emitida) ou devolução */
+  if (transaction.sourceSystem === 'sales') {
+    if (transaction.direction === 'outflow') {
+      // Devolução de venda (movementType='return' no parser FKN Vendas).
+      return makeClassified(
+        transaction,
+        'OUT_REFUND_CUSTOMER',
+        'source_mapping',
+        0.9,
+      );
+    }
+    // Venda regular (NF emitida): receita reconhecida no DRE accrual.
+    // Score alto e determinístico — vendas sempre dispatcham aqui.
+    return makeClassified(
+      transaction,
+      'IN_INVOICED_REVENUE',
+      'source_mapping',
+      0.92,
+    );
+  }
+
+  /* 8. Heurísticas */
   const heuristic = applyKeywordHeuristics(transaction);
   if (heuristic !== null) {
     // Mesmo classificada, se a conta original é genérica, é pendência fraca.
