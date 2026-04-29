@@ -8,19 +8,19 @@ importers:
 
   .:
     dependencies:
-      pdfjs-dist:
-        specifier: ^5.7.284
-        version: 5.7.284
-    devDependencies:
       '@types/node':
         specifier: ^22.10.0
         version: 22.19.17
-      tsx:
-        specifier: ^4.19.0
-        version: 4.21.0
+      pdfjs-dist:
+        specifier: ^5.7.284
+        version: 5.7.284
       typescript:
         specifier: ^5.6.0
         version: 5.9.3
+    devDependencies:
+      tsx:
+        specifier: ^4.19.0
+        version: 4.21.0
       vitest:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@22.19.17)
