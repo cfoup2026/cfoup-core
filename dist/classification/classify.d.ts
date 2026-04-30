@@ -1,5 +1,5 @@
 import { getBucketForCategory } from './categories.js';
-import type { ClassificationResult, ClassificationRule, ConfidenceLevel, SourceTransaction } from './types.js';
+import type { AccountCodeHintMap, ClassificationResult, ClassificationRule, ConfidenceLevel, SourceTransaction } from './types.js';
 /** Opções de execução do motor. */
 export interface ClassificationOptions {
     /** Regras da empresa, aplicadas com prioridade máxima. */
@@ -7,6 +7,10 @@ export interface ClassificationOptions {
     /** Quando o banco já casou em reconciliação, herda a categoria do CR/CP
      *  associado — evita classificar duas vezes a mesma realidade econômica. */
     reconciliationCategoryCode?: string;
+    /** Mapa externo de hints por `originalAccountCode`. Sinal de
+     *  classificação adicional, opcional. Sem este campo o motor mantém
+     *  o comportamento de fallback inalterado. */
+    accountCodeHints?: AccountCodeHintMap;
 }
 /** Lowercase + remoção de acentos. Para comparações case-insensitive. */
 export declare function normalizeText(s: string): string;
@@ -61,10 +65,11 @@ export declare function translateAccountingTransaction(transaction: SourceTransa
  *  5. Cartão sem detalhe → pendência `card_payment_without_detail`.
  *  6. AR → IN_CUSTOMER_RECEIPT/ADVANCE.
  *  7. Sales → IN_INVOICED_REVENUE (inflow) ou OUT_REFUND_CUSTOMER (return).
- *  8. Heurísticas por keyword (AP/ERP/manual/bank).
- *  9. Genérico relevante → pendência (com ou sem categoria sugerida).
- * 10. Banco sem match → pendência `unmatched_bank_transaction`.
- * 11. Fallback final → IN_OTHER/OUT_OTHER.
+ *  8. Account code hints (`accountCodeHints`) sobre `originalAccountCode`.
+ *  9. Heurísticas por keyword (AP/ERP/manual/bank).
+ * 10. Genérico relevante → pendência (com ou sem categoria sugerida).
+ * 11. Banco sem match → pendência `unmatched_bank_transaction`.
+ * 12. Fallback final → IN_OTHER/OUT_OTHER.
  *
  * Sempre retorna `bucket` derivado do código quando há código atribuído,
  * `null` em pendências sem categoria.

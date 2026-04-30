@@ -1,4 +1,4 @@
-export type { AccountingTranslation, Bucket, ClassificationMethod, ClassificationResult, ClassificationRule, ClassificationStatus, ConfidenceLevel, CreatedBy, Direction, ExceptionReason, GroupedException, MacroClass, PaymentChannel, ReconciliationMatch, ReconciliationMatchReason, ReconciliationMatchType, ReconciliationStatus, RuleType, SourceSystem, SourceTransaction, StandardCategory, } from './types.js';
+export type { AccountCodeHintMap, AccountingTranslation, Bucket, ClassificationMethod, ClassificationResult, ClassificationRule, ClassificationStatus, ConfidenceLevel, CreatedBy, Direction, ExceptionReason, GroupedException, MacroClass, PaymentChannel, ReconciliationMatch, ReconciliationMatchReason, ReconciliationMatchType, ReconciliationStatus, RuleType, SourceSystem, SourceTransaction, StandardCategory, StandardCategoryCode, } from './types.js';
 export { BUCKETS, BUCKETS_ORDERED } from './buckets.js';
 export { STANDARD_CATEGORIES, getBucketForCategory, getCategoryByCode, } from './categories.js';
 export { ACCOUNTING_TRANSLATIONS } from './accounting-translations.js';

@@ -1,5 +1,6 @@
 /* Tipos */
 export type {
+  AccountCodeHintMap,
   AccountingTranslation,
   Bucket,
   ClassificationMethod,
@@ -21,6 +22,7 @@ export type {
   SourceSystem,
   SourceTransaction,
   StandardCategory,
+  StandardCategoryCode,
 } from './types.js';
 
 /* Configuração imutável */

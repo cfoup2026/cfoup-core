@@ -26,7 +26,7 @@ export type Bucket = 'receita' | 'deducoes' | 'custos_diretos' | 'folha' | 'desp
 /** Macro-classe contábil, agrupa categorias por natureza econômica. */
 export type MacroClass = 'revenue' | 'direct_cost' | 'people' | 'opex' | 'tax' | 'debt' | 'financial' | 'capex' | 'owner' | 'transfer' | 'refund' | 'inventory' | 'accounting_translation' | 'undefined';
 /** Como a classificação foi obtida — define provenance. */
-export type ClassificationMethod = 'source_mapping' | 'accounting_translation' | 'counterparty_rule' | 'keyword_rule' | 'original_account_rule' | 'cost_center_rule' | 'reconciliation_match' | 'batch_match' | 'owner_confirmed' | 'manual' | 'fallback';
+export type ClassificationMethod = 'source_mapping' | 'accounting_translation' | 'counterparty_rule' | 'keyword_rule' | 'original_account_rule' | 'cost_center_rule' | 'reconciliation_match' | 'batch_match' | 'owner_confirmed' | 'account_code_hint' | 'manual' | 'fallback';
 /** Faixa qualitativa derivada do `confidenceScore`. */
 export type ConfidenceLevel = 'high' | 'medium' | 'low';
 /**
@@ -104,7 +104,17 @@ export interface SourceTransaction {
     createdAt?: Date;
 }
 /**
- * Definição de uma das 41 categorias internas do motor. Imutável (configuração).
+ * União literal dos códigos das 42 categorias standard do motor. Existe
+ * para que mapas externos (ex: `AccountCodeHintMap`) usem o tipo exato
+ * em vez de `string`, com checagem em tempo de compilação contra typos.
+ *
+ * Mantenha esta união sincronizada com `STANDARD_CATEGORIES` em
+ * `categories.ts` — os testes existentes detectam divergência: o teste
+ * que itera `STANDARD_CATEGORIES` falha se algum código aqui ficar fora.
+ */
+export type StandardCategoryCode = 'IN_CUSTOMER_RECEIPT' | 'IN_CUSTOMER_ADVANCE' | 'IN_INVOICED_REVENUE' | 'IN_CARD_SETTLEMENT' | 'IN_MARKETPLACE' | 'IN_LOAN' | 'IN_OWNER_CAPITAL' | 'IN_REFUND' | 'IN_INVESTMENT_INCOME' | 'IN_ASSET_SALE' | 'IN_TRANSFER' | 'IN_OTHER' | 'OUT_SUPPLIER_DIRECT' | 'OUT_SERVICE_DIRECT' | 'OUT_PAYROLL' | 'OUT_CONTRACTORS' | 'OUT_BENEFITS' | 'OUT_COMMISSION' | 'OUT_TAXES_SALES' | 'OUT_TAXES_OTHER' | 'OUT_REFUND_CUSTOMER' | 'OUT_RENT' | 'OUT_UTILITIES' | 'OUT_SOFTWARE' | 'OUT_MARKETING' | 'OUT_LOGISTICS' | 'OUT_TRAVEL' | 'OUT_OFFICE' | 'OUT_PROFESSIONAL_FEES' | 'OUT_INSURANCE' | 'OUT_REPAIR_MAINTENANCE' | 'OUT_BANK_FEES' | 'OUT_INTEREST' | 'OUT_DEBT_PRINCIPAL' | 'OUT_CARD_PAYMENT' | 'OUT_CAPEX' | 'OUT_OWNER_DRAW' | 'OUT_INVENTORY_PURCHASE' | 'OUT_INVENTORY_CONSUMED' | 'OUT_INVENTORY_WRITEOFF' | 'OUT_TRANSFER' | 'OUT_OTHER';
+/**
+ * Definição de uma das 42 categorias internas do motor. Imutável (configuração).
  *
  * Os `affects*` controlam quais relatórios derivados sentem essa categoria.
  * Especialmente importantes em estoque: `OUT_INVENTORY_CONSUMED` afeta
@@ -113,7 +123,7 @@ export interface SourceTransaction {
  */
 export interface StandardCategory {
     /** Código estável (ex: 'OUT_RENT'). */
-    code: string;
+    code: StandardCategoryCode;
     /** Direção da categoria. */
     direction: Direction;
     /** Macro-classe econômica. */
@@ -294,5 +304,29 @@ export interface GroupedException {
     confidenceScore: number;
     /** True quando o dono precisa decidir (default em pendências). */
     requiresOwnerAction: boolean;
+}
+/**
+ * Mapa externo de hints por código de conta original. Permite que um
+ * consumidor (ex: cfoup-overview-v3) injete conhecimento específico do
+ * cliente sem que isso vire tabela hardcoded dentro do core.
+ *
+ *  - `exact`: match por código completo. Sinal forte.
+ *  - `prefix`: match por prefixo (ex: '4.1.' bate '4.1.001', '4.1.002').
+ *    Sinal médio — exige confirmação pela descrição para virar
+ *    `classified` com confiança alta. Sem confirmação, o motor devolve
+ *    `needs_confirmation`.
+ *
+ * Não persiste, não muta. Construído pelo consumidor a cada chamada.
+ */
+export interface AccountCodeHintMap {
+    /** Código exato → categoria sugerida. Sinal forte. */
+    exact?: Readonly<Record<string, StandardCategoryCode>>;
+    /** Prefixo de código → categoria sugerida. Sinal médio.
+     *  Avaliados na ordem listada; primeiro que casa ganha. */
+    prefix?: ReadonlyArray<{
+        pattern: string;
+        category: StandardCategoryCode;
+        confidence: 'medium';
+    }>;
 }
 //# sourceMappingURL=types.d.ts.map

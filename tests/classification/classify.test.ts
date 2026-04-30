@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Sale } from '../../src/types/index.js';
 import type {
+  AccountCodeHintMap,
   ClassificationResult,
   ClassificationStatus,
   SourceTransaction,
@@ -916,5 +917,186 @@ describe('Reconciliação prévia — herda categoria do CR/CP', () => {
     });
     expect(r.standardCategoryCode).toBe('IN_CUSTOMER_RECEIPT');
     expect(r.classificationMethod).toBe('reconciliation_match');
+  });
+});
+
+describe('accountCodeHints — sinal externo via originalAccountCode', () => {
+  // Hint de cliente: código '6.1.001' = aluguel; prefixo '6.2.' = software.
+  // Códigos fictícios escolhidos pra não colidir com nenhuma heurística por
+  // keyword (heurísticas leem texto, não código).
+  const exactHints: AccountCodeHintMap = {
+    exact: {
+      '6.1.001': 'OUT_RENT',
+    },
+  };
+  const prefixHints: AccountCodeHintMap = {
+    prefix: [{ pattern: '6.2.', category: 'OUT_SOFTWARE', confidence: 'medium' }],
+  };
+  const mixedHints: AccountCodeHintMap = {
+    exact: { '6.1.001': 'OUT_RENT' },
+    prefix: [{ pattern: '6.2.', category: 'OUT_SOFTWARE', confidence: 'medium' }],
+  };
+
+  it('exact hint sem contradição → classified, account_code_hint, high', () => {
+    const tx = makeTx({
+      id: 'hint_e1',
+      sourceSystem: 'accounts_payable',
+      direction: 'outflow',
+      amount: 5000,
+      originalAccountCode: '6.1.001',
+      // Descrição neutra, sem keyword que dispare heurística.
+      description: 'Pagamento mensal',
+    });
+    const r = classifyTransaction(tx, { accountCodeHints: exactHints });
+    expect(r.standardCategoryCode).toBe('OUT_RENT');
+    expect(r.bucket).toBe('despesas_operacionais');
+    expect(r.classificationMethod).toBe('account_code_hint');
+    expect(r.status).toBe('classified');
+    expect(r.confidenceLevel).toBe('high');
+    expect(r.confidenceScore).toBeGreaterThanOrEqual(0.85);
+  });
+
+  it('exact hint + descrição contradiz fortemente → needs_confirmation, medium', () => {
+    const tx = makeTx({
+      id: 'hint_e2',
+      sourceSystem: 'accounts_payable',
+      direction: 'outflow',
+      amount: 480,
+      originalAccountCode: '6.1.001', // hint diz OUT_RENT
+      description: 'energia eletrica conta março', // heurística diz OUT_UTILITIES
+    });
+    const r = classifyTransaction(tx, { accountCodeHints: exactHints });
+    expect(r.standardCategoryCode).toBe('OUT_RENT'); // hint vence em categoria
+    expect(r.classificationMethod).toBe('account_code_hint');
+    expect(r.status).toBe('needs_confirmation');
+    expect(r.confidenceLevel).toBe('medium');
+    expect(r.requiresOwnerConfirmation).toBe(true);
+  });
+
+  it('prefix hint sozinho (sem suporte da descrição) → needs_confirmation', () => {
+    const tx = makeTx({
+      id: 'hint_p1',
+      sourceSystem: 'accounts_payable',
+      direction: 'outflow',
+      amount: 420,
+      originalAccountCode: '6.2.999',
+      description: 'Pagamento diverso',
+    });
+    const r = classifyTransaction(tx, { accountCodeHints: prefixHints });
+    expect(r.standardCategoryCode).toBe('OUT_SOFTWARE');
+    expect(r.classificationMethod).toBe('account_code_hint');
+    expect(r.status).toBe('needs_confirmation');
+    expect(r.confidenceLevel).toBe('medium');
+  });
+
+  it('prefix hint com descrição apoiando a mesma categoria → classified', () => {
+    const tx = makeTx({
+      id: 'hint_p2',
+      sourceSystem: 'accounts_payable',
+      direction: 'outflow',
+      amount: 320,
+      originalAccountCode: '6.2.555',
+      // Descrição contém keyword que a heurística mapeia em OUT_SOFTWARE.
+      description: 'Licença de software anual',
+    });
+    const r = classifyTransaction(tx, { accountCodeHints: prefixHints });
+    expect(r.standardCategoryCode).toBe('OUT_SOFTWARE');
+    expect(r.classificationMethod).toBe('account_code_hint');
+    expect(r.status).toBe('classified');
+    expect(r.confidenceLevel).toBe('high');
+  });
+
+  it('exact tem prioridade sobre prefix quando ambos casariam', () => {
+    // Código '6.1.001' bate em exact AND poderia bater num prefix '6.1.' se
+    // existisse. Aqui mostramos que exact ganha — score 0.92, não 0.86.
+    const hints: AccountCodeHintMap = {
+      exact: { '6.1.001': 'OUT_RENT' },
+      prefix: [{ pattern: '6.1.', category: 'OUT_OFFICE', confidence: 'medium' }],
+    };
+    const tx = makeTx({
+      id: 'hint_pri',
+      sourceSystem: 'accounts_payable',
+      direction: 'outflow',
+      amount: 5000,
+      originalAccountCode: '6.1.001',
+      description: 'Pagamento neutro',
+    });
+    const r = classifyTransaction(tx, { accountCodeHints: hints });
+    expect(r.standardCategoryCode).toBe('OUT_RENT'); // do exact, não OUT_OFFICE
+    expect(r.confidenceScore).toBeCloseTo(0.92, 2);
+  });
+
+  it('código não bate em nenhum hint → fallback existente, sem account_code_hint', () => {
+    const tx = makeTx({
+      id: 'hint_miss',
+      sourceSystem: 'accounts_payable',
+      direction: 'outflow',
+      amount: 8500,
+      originalAccountCode: '9.9.999', // não bate em exact nem prefix
+      description: 'Aluguel comercial mensal', // heurística pega OUT_RENT
+    });
+    const r = classifyTransaction(tx, { accountCodeHints: mixedHints });
+    expect(r.standardCategoryCode).toBe('OUT_RENT');
+    expect(r.classificationMethod).toBe('keyword_rule');
+  });
+
+  it('sem options → comportamento idêntico ao motor sem hint', () => {
+    const tx = makeTx({
+      id: 'hint_none',
+      sourceSystem: 'accounts_payable',
+      direction: 'outflow',
+      amount: 8500,
+      originalAccountCode: '6.1.001', // tem código mas options não vem
+      description: 'Aluguel comercial mensal',
+    });
+    const noOpts = classifyTransaction(tx);
+    const emptyOpts = classifyTransaction(tx, {});
+    // Heurística pega OUT_RENT pelo texto. Mesma resposta nos dois casos.
+    expect(noOpts.standardCategoryCode).toBe('OUT_RENT');
+    expect(noOpts.classificationMethod).toBe('keyword_rule');
+    expect(emptyOpts.standardCategoryCode).toBe(noOpts.standardCategoryCode);
+    expect(emptyOpts.classificationMethod).toBe(noOpts.classificationMethod);
+  });
+
+  it('originalAccountCode ausente → hint não dispara mesmo com map fornecido', () => {
+    const tx = makeTx({
+      id: 'hint_noc',
+      sourceSystem: 'accounts_payable',
+      direction: 'outflow',
+      amount: 1000,
+      // sem originalAccountCode
+      description: 'Pagamento aleatório xyz',
+    });
+    const r = classifyTransaction(tx, { accountCodeHints: exactHints });
+    expect(r.classificationMethod).not.toBe('account_code_hint');
+  });
+
+  it('rule explícita ainda vence sobre account_code_hint (regra > hint)', () => {
+    const tx = makeTx({
+      id: 'hint_vs_rule',
+      sourceSystem: 'accounts_payable',
+      direction: 'outflow',
+      amount: 5000,
+      originalAccountCode: '6.1.001', // hint diria OUT_RENT
+      counterpartyName: 'Posto Shell BR',
+    });
+    const r = classifyTransaction(tx, {
+      accountCodeHints: exactHints,
+      rules: [
+        {
+          id: 'r_x',
+          companyId: 'co_test_001',
+          ruleType: 'counterparty',
+          pattern: 'Posto Shell',
+          standardCategoryCode: 'OUT_REPAIR_MAINTENANCE',
+          appliesToFutureTransactions: true,
+          createdBy: 'owner',
+          confidenceBoost: 0.1,
+          active: true,
+        },
+      ],
+    });
+    expect(r.standardCategoryCode).toBe('OUT_REPAIR_MAINTENANCE');
+    expect(r.classificationMethod).toBe('owner_confirmed');
   });
 });

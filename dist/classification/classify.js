@@ -743,6 +743,80 @@ function makePending(transaction, code, score, exceptionReason, method = 'fallba
         result.ownerFriendlyLabel = cat.ownerFriendlyLabel;
     return result;
 }
+/**
+ * Resolve um `originalAccountCode` contra o mapa de hints. `exact` tem
+ * prioridade sobre `prefix`. Em `prefix`, a primeira entrada da lista
+ * que casa ganha (chamador controla a ordem).
+ */
+function resolveAccountCodeHint(code, hintMap) {
+    if (hintMap.exact !== undefined) {
+        const cat = hintMap.exact[code];
+        if (cat !== undefined)
+            return { category: cat, isExact: true };
+    }
+    if (hintMap.prefix !== undefined) {
+        for (const p of hintMap.prefix) {
+            if (code.startsWith(p.pattern)) {
+                return { category: p.category, isExact: false };
+            }
+        }
+    }
+    return null;
+}
+/**
+ * Score-table do dispatch de hint:
+ *
+ *  - Exact + sem contradição: 0.92 → high → classified
+ *  - Exact + descrição contradiz fortemente: 0.70 → medium → needs_confirmation
+ *  - Prefix + descrição apoia: 0.86 → high → classified
+ *  - Prefix sozinho ou contradito: 0.65 → medium → needs_confirmation
+ *
+ * Categoria proposta SEMPRE vem do hint — descrição só modula score/status.
+ * `exceptionReason: 'none'` em ambos os casos: hint dá categoria limpa,
+ * não é "exceção" no sentido de pendência sem sugestão.
+ */
+function makeAccountCodeHintResult(transaction, code, isExact, heuristicAgrees, heuristicContradicts) {
+    let score;
+    let status;
+    if (isExact) {
+        if (heuristicContradicts) {
+            score = 0.7;
+            status = 'needs_confirmation';
+        }
+        else {
+            score = 0.92;
+            status = 'classified';
+        }
+    }
+    else {
+        if (heuristicAgrees) {
+            score = 0.86;
+            status = 'classified';
+        }
+        else {
+            score = 0.65;
+            status = 'needs_confirmation';
+        }
+    }
+    const cat = getCategoryByCode(code);
+    const result = {
+        sourceTransactionId: transaction.id,
+        companyId: transaction.companyId,
+        standardCategoryCode: code,
+        bucket: cat?.bucket ?? null,
+        confidenceScore: score,
+        confidenceLevel: calculateConfidenceLevel(score),
+        classificationMethod: 'account_code_hint',
+        originalLabelPreserved: true,
+        requiresOwnerConfirmation: status !== 'classified',
+        exceptionReason: 'none',
+        status,
+    };
+    if (cat?.ownerFriendlyLabel !== undefined) {
+        result.ownerFriendlyLabel = cat.ownerFriendlyLabel;
+    }
+    return result;
+}
 /* ─────────── Função principal ─────────── */
 /**
  * Classifica uma transação. Pura, síncrona, nunca lança.
@@ -755,10 +829,11 @@ function makePending(transaction, code, score, exceptionReason, method = 'fallba
  *  5. Cartão sem detalhe → pendência `card_payment_without_detail`.
  *  6. AR → IN_CUSTOMER_RECEIPT/ADVANCE.
  *  7. Sales → IN_INVOICED_REVENUE (inflow) ou OUT_REFUND_CUSTOMER (return).
- *  8. Heurísticas por keyword (AP/ERP/manual/bank).
- *  9. Genérico relevante → pendência (com ou sem categoria sugerida).
- * 10. Banco sem match → pendência `unmatched_bank_transaction`.
- * 11. Fallback final → IN_OTHER/OUT_OTHER.
+ *  8. Account code hints (`accountCodeHints`) sobre `originalAccountCode`.
+ *  9. Heurísticas por keyword (AP/ERP/manual/bank).
+ * 10. Genérico relevante → pendência (com ou sem categoria sugerida).
+ * 11. Banco sem match → pendência `unmatched_bank_transaction`.
+ * 12. Fallback final → IN_OTHER/OUT_OTHER.
  *
  * Sempre retorna `bucket` derivado do código quando há código atribuído,
  * `null` em pendências sem categoria.
@@ -815,7 +890,21 @@ export function classifyTransaction(transaction, options = {}) {
         // Score alto e determinístico — vendas sempre dispatcham aqui.
         return makeClassified(transaction, 'IN_INVOICED_REVENUE', 'source_mapping', 0.92);
     }
-    /* 8. Heurísticas */
+    /* 8. Account code hints — sinal externo opcional sobre originalAccountCode */
+    if (options.accountCodeHints !== undefined &&
+        transaction.originalAccountCode !== undefined) {
+        const hint = resolveAccountCodeHint(transaction.originalAccountCode, options.accountCodeHints);
+        if (hint !== null) {
+            // Consulta a heurística por keyword apenas pra detectar concordância
+            // ou contradição com a descrição. Não persiste resultado da heurística.
+            // Não altera o fallback: caminho sem hint segue inalterado pro step 9.
+            const heuristic = applyKeywordHeuristics(transaction);
+            const heuristicAgrees = heuristic !== null && heuristic.code === hint.category;
+            const heuristicContradicts = heuristic !== null && heuristic.code !== hint.category;
+            return makeAccountCodeHintResult(transaction, hint.category, hint.isExact, heuristicAgrees, heuristicContradicts);
+        }
+    }
+    /* 9. Heurísticas */
     const heuristic = applyKeywordHeuristics(transaction);
     if (heuristic !== null) {
         // Mesmo classificada, se a conta original é genérica, é pendência fraca.
