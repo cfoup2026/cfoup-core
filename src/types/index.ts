@@ -33,3 +33,23 @@ export type {
   BalanceSheetValueSource,
   BalanceType,
 } from './balance-sheet.js';
+
+/* ─── CF13 — pipeline fluxo de caixa 13 semanas (Estágio 1.1) ─── */
+export type {
+  Confianca,
+  ConfiancaOrigem,
+  ContraparteTipo,
+  Criticidade,
+  Direcao,
+  Origem,
+  Status,
+} from './enums.js';
+export type {
+  EventoCaixa,
+  EventoCaixaBase,
+  EventoConfirmado,
+  EventoEstimado,
+  EventoPendente,
+  EventoRealizado,
+} from './EventoCaixa.js';
+export type { OpeningBalanceSnapshot } from './OpeningBalanceSnapshot.js';

@@ -1,5 +1,8 @@
 node_modules
 coverage
+# Fixtures Gregorutt full (dados sensíveis de cliente — só rodam local).
+# Sample anonimizado para CI fica em tests/fixtures/gregorutt-sample/ (commitado).
+tests/fixtures/gregorutt/
 .DS_Store
 *.log
 .env
