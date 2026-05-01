@@ -15,4 +15,5 @@ export { buildEventoCaixaBase } from './buildEventoCaixaBase.js';
 /* Adapters */
 export { fknApAdapter } from './adapters/fkn-ap.adapter.js';
 export { fknArAdapter } from './adapters/fkn-ar.adapter.js';
+export { fknVendasAdapter } from './adapters/fkn-vendas.adapter.js';
 export { cefAdapter } from './adapters/cef.adapter.js';

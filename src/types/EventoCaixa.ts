@@ -89,6 +89,30 @@ export interface EventoCaixaBase {
   cenario_id?: string;
   /** Notas livres em PT-BR. */
   observacao?: string;
+
+  /* ───── Auditoria de reconciliação (Estágio 3.1) ───── */
+
+  /**
+   * `id` do `EventoCaixa` de extrato bancário absorvido em reconciliação.
+   * Preenchido quando um `confirmado` foi promovido para `realizado` por
+   * match com transação CEF (banco). Drill-down futuro permite mostrar
+   * "esse título FKN bateu com transação CEF X".
+   */
+  reconciliado_com?: string;
+  /** Timestamp UTC do match de reconciliação. */
+  reconciliado_em?: Date;
+
+  /* ───── Transferência interna (Estágio 3.2) ───── */
+
+  /**
+   * `id` do `EventoCaixa` que é o "outro lado" do par de transferência
+   * interna. Preenchido em conjunto com `is_transferencia=true` quando
+   * `detectaTransferenciaInterna` casa duas pernas opostas entre
+   * `legal_entity_id`s do mesmo `cliente_id`. Permite navegação 1:1
+   * entre as pernas para drill-down e para neutralização no consolidado
+   * do cliente (transferência só andou de bolso).
+   */
+  transferencia_par_id?: string;
 }
 
 /**

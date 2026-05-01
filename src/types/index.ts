@@ -65,3 +65,23 @@ export type {
   VolatilidadeStats,
 } from './historico.js';
 export { HistoricoError } from './historico.js';
+
+/* ─── CF13 — Estágio 3.1: Reconciliação banco ↔ CP/CR ─── */
+export type {
+  AbsorcaoBancaria,
+  PendenciaReconciliacao,
+  ReconciliacaoEstatisticas,
+  ReconciliacaoResult,
+  TipoPendenciaReconciliacao,
+} from './reconciliacao.js';
+export { ReconciliacaoError } from './reconciliacao.js';
+
+/* ─── CF13 — Estágio 3.2: Vendas auxiliares e reconciliação Vendas↔AR ─── */
+export type {
+  PendenciaComercial,
+  PrazoVenda,
+  ReconciliacaoComercialEstatisticas,
+  ReconciliacaoComercialResult,
+  TipoPendenciaComercial,
+  VendaComercial,
+} from './comercial.js';
