@@ -77,6 +77,15 @@ export function buildEventoCaixaBase(
       `data_esperada ausente ou inválida (origem_ref=${input.origem_ref})`,
     );
   }
+  // `origem='historico'` é exclusiva do Motor de Histórico (Estágio 2.2).
+  // O `generateEstimados` constrói eventos diretamente, sem passar por
+  // `buildEventoCaixaBase`. Adapters externos que tentam emitir esse
+  // valor recebem rejeição visível.
+  if (input.origem === 'historico') {
+    throw new IngestaoError(
+      `origem='historico' é exclusiva do Motor de Histórico — adapters externos não podem produzir esse valor (origem_ref=${input.origem_ref})`,
+    );
+  }
 
   const id = `${input.origem}_${input.origem_ref}_${ctx.cliente_id}_${ctx.legal_entity_id}`;
 

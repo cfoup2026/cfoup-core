@@ -196,4 +196,34 @@ describe('buildEventoCaixaBase — validação visível', () => {
       ),
     ).toThrow(/data_esperada/);
   });
+
+  it('origem="historico" via adapter externo → IngestaoError', () => {
+    // `origem="historico"` é exclusiva do MotorHistorico (Estágio 2.2).
+    // `buildEventoCaixaBase` rejeita pra impedir adapter externo de
+    // forjar essa origem.
+    expect(() =>
+      buildEventoCaixaBase(
+        {
+          origem: 'historico',
+          origem_ref: 'x',
+          valor: 100,
+          direcao: 'saida',
+          data_esperada: VALID_DATE,
+        },
+        ctx,
+      ),
+    ).toThrow(IngestaoError);
+    expect(() =>
+      buildEventoCaixaBase(
+        {
+          origem: 'historico',
+          origem_ref: 'x',
+          valor: 100,
+          direcao: 'saida',
+          data_esperada: VALID_DATE,
+        },
+        ctx,
+      ),
+    ).toThrow(/exclusiva do Motor de Histórico/);
+  });
 });

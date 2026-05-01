@@ -53,3 +53,15 @@ export type {
   EventoRealizado,
 } from './EventoCaixa.js';
 export type { OpeningBalanceSnapshot } from './OpeningBalanceSnapshot.js';
+
+/* ─── CF13 — Estágio 2: Motor de Histórico ─── */
+export type {
+  BaseDeAmostragem,
+  ContraparteStats,
+  HistoricoOperacional,
+  HistoricoOperacionalParcial,
+  Periodo,
+  Recorrencia,
+  VolatilidadeStats,
+} from './historico.js';
+export { HistoricoError } from './historico.js';

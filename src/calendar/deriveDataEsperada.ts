@@ -1,38 +1,43 @@
+import { addUTCDays } from '../utils/date.js';
 import type { CalendarPolicy, ContraparteHistory } from './CalendarPolicy.js';
 
 /**
- * Deriva `data_esperada` a partir de `data_vencimento` aplicando o
- * calendário operacional. Regra §7.1 do CF13:
+ * Deriva `data_esperada` a partir de `data_vencimento` aplicando:
  *
- *  - Se `data_vencimento` é dia útil → `data_esperada = data_vencimento`
- *    (passthrough, NÃO move).
- *  - Se cai em sábado, domingo ou feriado bancário nacional →
- *    `data_esperada = calendar.nextBusinessDay(data_vencimento)`.
+ *  1. **Ajuste por contraparte** (hook ativo desde Estágio 2.2): se
+ *     `contraparteHistory` e `contraparteId` são fornecidos e a
+ *     contraparte tem `padrao_estavel = true` E `mediana_dias !== 0`,
+ *     desloca a base por `mediana_dias` dias.
  *
- * Importante: aplicar **somente** a eventos `confirmado`/`estimado`.
- * Eventos `realizado` mantêm `data_esperada = data_realizada` direto, sem
- * passar por aqui — fato consumado é fato consumado (Pix/TED ocorrem fora
- * de dia útil).
+ *  2. **Calendário operacional** (regra §7.1 do CF13): se a base cair
+ *     em sábado, domingo ou feriado bancário nacional, move para o
+ *     próximo dia útil. Caso contrário mantém.
  *
- * `data_vencimento` permanece preservada para drill-down — não é sobrescrita.
+ * Eventos `realizado` NÃO devem passar por aqui — `data_esperada =
+ * data_realizada` direto (fato consumado é fato consumado).
+ * `data_vencimento` original permanece preservada no `EventoCaixa`
+ * para drill-down — não é sobrescrita.
  *
- * O parâmetro `contraparteHistory` é um hook **no-op** nesta etapa. O Motor
- * de Histórico (Prompt 2) vai prover ajuste por padrão de antecipação/atraso
- * de cada contraparte ANTES da regra de calendário (chamando primeiro o
- * histórico, depois o calendário). A assinatura já aceita o argumento para
- * que adapters do 1.3 não precisem mudar quando 2.x ativar.
+ * Compatibilidade Stage 1: chamadas sem `contraparteHistory`/`contraparteId`
+ * (caminho dos adapters FKN AP/AR) mantêm comportamento idêntico ao
+ * que era em 1.3 — calendário puro sobre `data_vencimento`.
  */
 export function deriveDataEsperada(
   dataVencimento: Date,
   calendar: CalendarPolicy,
   contraparteHistory?: ContraparteHistory,
+  contraparteId?: string,
 ): Date {
-  // Hook contraparteHistory: no-op nesta etapa. Marca-se como `void` pra
-  // satisfazer linters de "argumento não-usado" sem suprimir a interface.
-  void contraparteHistory;
+  let base = dataVencimento;
 
-  if (calendar.isBusinessDay(dataVencimento)) {
-    return dataVencimento;
+  // Hook ativo: ajuste por padrão histórico da contraparte.
+  if (contraparteHistory !== undefined && contraparteId !== undefined) {
+    const stats = contraparteHistory.get(contraparteId);
+    if (stats !== undefined && stats.padrao_estavel && stats.mediana_dias !== 0) {
+      base = addUTCDays(dataVencimento, stats.mediana_dias);
+    }
   }
-  return calendar.nextBusinessDay(dataVencimento);
+
+  if (calendar.isBusinessDay(base)) return base;
+  return calendar.nextBusinessDay(base);
 }

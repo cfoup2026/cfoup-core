@@ -1,4 +1,8 @@
-export type { CalendarPolicy, ContraparteHistory } from './CalendarPolicy.js';
+export type {
+  CalendarPolicy,
+  ContraparteAdjustment,
+  ContraparteHistory,
+} from './CalendarPolicy.js';
 export { BrazilCalendarPolicy } from './BrazilCalendarPolicy.js';
 export { deriveDataEsperada } from './deriveDataEsperada.js';
 export {

@@ -4,3 +4,4 @@ export * from './csv/index.js';
 export * from './classification/index.js';
 export * from './calendar/index.js';
 export * from './ingestion/index.js';
+export * from './historico/index.js';

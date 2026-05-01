@@ -12,6 +12,12 @@ export type Direcao = 'entrada' | 'saida';
 /**
  * Sistema-fonte ou processo que gerou o evento. Usado pra rastrear
  * provenance e decidir handlers downstream (reconciliação, classificação).
+ *
+ * `'historico'` é exclusivo do Motor de Histórico (Estágio 2.2): só
+ * eventos com `status='estimado'` produzidos por `generateEstimados` podem
+ * carregar essa origem. Adapters externos (Stage 1) que tentam emitir
+ * `origem='historico'` são rejeitados em `buildEventoCaixaBase` com
+ * `IngestaoError`.
  */
 export type Origem =
   | 'pluggy'
@@ -21,7 +27,8 @@ export type Origem =
   | 'cef'
   | 'contabil'
   | 'csv'
-  | 'manual';
+  | 'manual'
+  | 'historico';
 
 /**
  * Estado do evento na linha do tempo. Discriminator das variantes de

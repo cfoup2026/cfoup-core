@@ -23,14 +23,30 @@ export interface CalendarPolicy {
 }
 
 /**
- * Histórico de pagamento por contraparte. Placeholder na Etapa 1.3 —
- * o Motor de Histórico (Prompt 2) vai prover métodos para consultar
- * padrões de antecipação/atraso por contraparte.
- *
- * Hoje: `deriveDataEsperada` aceita o parâmetro mas é no-op.
+ * Ajuste mínimo por contraparte que `deriveDataEsperada` precisa
+ * consultar — desacoplado do tipo `ContraparteStats` (que vive em
+ * `src/types/historico.ts`) para que o módulo `calendar` permaneça
+ * fundação sem depender do `historico`. Como `ContraparteStats` tem
+ * `padrao_estavel: boolean` e `mediana_dias: number` em sua superfície,
+ * é estruturalmente compatível: o caller passa
+ * `Map<string, ContraparteStats>` direto.
  */
-export interface ContraparteHistory {
-  /** Marker reservado pra evitar que `{}` colida acidentalmente.
-   *  Será substituído por métodos reais (ex: `getOffsetDays`) no Estágio 2. */
-  readonly __cf13_history?: 'estagio-2-pending';
+export interface ContraparteAdjustment {
+  /** True quando a contraparte tem padrão observado consistente. */
+  padrao_estavel: boolean;
+  /** Mediana do delta `data_realizada - data_vencimento` em dias.
+   *  Positivo = paga em atraso; negativo = adianta. Aplicado quando
+   *  `padrao_estavel` é true e mediana ≠ 0. */
+  mediana_dias: number;
 }
+
+/**
+ * Mapa `contraparte_id → ContraparteAdjustment`. Em Estágio 2.2 o
+ * `MotorHistorico` produz `Map<string, ContraparteStats>`, que é
+ * assignável a este tipo (covariância em ReadonlyMap).
+ *
+ * Quando passado a `deriveDataEsperada`, eventos confirmados de uma
+ * contraparte estável têm `data_esperada` deslocada por `mediana_dias`
+ * antes da regra de calendário operacional.
+ */
+export type ContraparteHistory = ReadonlyMap<string, ContraparteAdjustment>;

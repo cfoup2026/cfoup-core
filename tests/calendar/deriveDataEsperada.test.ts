@@ -66,16 +66,16 @@ describe('deriveDataEsperada — sequência de feriados/ponte', () => {
   });
 });
 
-describe('deriveDataEsperada — hook contraparteHistory (no-op nesta etapa)', () => {
-  it('aceita ContraparteHistory opcional sem quebrar comportamento', () => {
-    const placeholder: ContraparteHistory = {};
+describe('deriveDataEsperada — hook contraparteHistory (compat de assinatura)', () => {
+  it('aceita ContraparteHistory vazio sem quebrar comportamento', () => {
+    const empty: ContraparteHistory = new Map();
     const d = utc(2026, 5, 6); // útil
-    expect(deriveDataEsperada(d, cal, placeholder)).toEqual(d);
+    expect(deriveDataEsperada(d, cal, empty)).toEqual(d);
   });
 
-  it('com history não-undefined também passa direto em fim de semana → seg', () => {
-    const placeholder: ContraparteHistory = {};
-    expect(deriveDataEsperada(utc(2026, 5, 2), cal, placeholder)).toEqual(
+  it('com history vazio também passa direto em fim de semana → seg', () => {
+    const empty: ContraparteHistory = new Map();
+    expect(deriveDataEsperada(utc(2026, 5, 2), cal, empty)).toEqual(
       utc(2026, 5, 4),
     );
   });
