@@ -44,6 +44,7 @@ export interface MkEventoArgs {
   cliente_id?: string;
   legal_entity_id?: string;
   bucket_id?: string;
+  criticidade?: Criticidade;
   contraparte_id?: string;
   contraparte_tipo?: ContraparteTipo;
   origem_ref?: string;
@@ -52,6 +53,10 @@ export interface MkEventoArgs {
   // Audit (testes que querem simular já-reconciliado)
   reconciliado_com?: string;
   reconciliado_em?: Date;
+
+  // Transferência interna (testes que querem simular par marcado)
+  is_transferencia?: boolean;
+  transferencia_par_id?: string;
 }
 
 export function mkEvento(args: MkEventoArgs): EventoCaixa {
@@ -69,10 +74,10 @@ export function mkEvento(args: MkEventoArgs): EventoCaixa {
     cliente_id,
     legal_entity_id,
     origem: args.origem,
-    criticidade: DEFAULTS.criticidade,
+    criticidade: args.criticidade ?? DEFAULTS.criticidade,
     confianca: 'alta' as const,
     confianca_origem: 'sistema' as const,
-    is_transferencia: false,
+    is_transferencia: args.is_transferencia ?? false,
     criado_em: DEFAULTS.criado_em,
     criado_por: DEFAULTS.criado_por,
   };
@@ -142,6 +147,8 @@ export function mkEvento(args: MkEventoArgs): EventoCaixa {
     result.reconciliado_com = args.reconciliado_com;
   if (args.reconciliado_em !== undefined)
     result.reconciliado_em = args.reconciliado_em;
+  if (args.transferencia_par_id !== undefined)
+    result.transferencia_par_id = args.transferencia_par_id;
 
   return result;
 }

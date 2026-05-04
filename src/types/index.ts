@@ -85,3 +85,27 @@ export type {
   TipoPendenciaComercial,
   VendaComercial,
 } from './comercial.js';
+
+/* ─── CF13 — Estágio 4.1: Projeção semanal por unidade ─── */
+export type {
+  CaixaInicial,
+  CaixaMinimoOpProvenance,
+  CaixaMinimoOpProvenancePorUnidade,
+  MargemOrigem,
+  ProjecaoUnidade,
+  ProjecaoUnidadeEstatisticas,
+  ProjetaUnidadeInput,
+  SemanaProjecao,
+} from './projecao.js';
+export { ProjecaoError } from './projecao.js';
+
+/* ─── CF13 — Estágio 4.2: Consolidado por cliente + transferência ─── */
+export type {
+  CaixaInicialConsolidado,
+  EstatisticasConsolidadas,
+  MotivoTransferenciaInvalida,
+  ProjecaoCliente,
+  ProjecaoConsolidada,
+  ProjetaClienteInput,
+  TransferenciaNeutralizada,
+} from './projecao.js';
