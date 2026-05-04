@@ -304,12 +304,12 @@ describe('CF13 Stage 3 — Smoke completo', () => {
 
       /* Sanity de tempo. Spec: < 60s no full em hardware isolado.
        * Em execução paralela (vitest roda smokes simultâneos), CPU
-       * contention pode dobrar o tempo — bumpamos pra 120s só pra pegar
-       * regressões patológicas. Solo, este smoke termina ~40s no
-       * Gregorutt full. */
+       * contention pode dobrar/triplicar o tempo. Solo, este smoke
+       * termina ~40s no Gregorutt full; em paralelo com 4/4.5 chega
+       * em ~150s. Teto 180s pega regressões patológicas. */
       const elapsedMs = Date.now() - t0;
       if (!SAMPLE_MODE) {
-        expect(elapsedMs).toBeLessThan(120_000);
+        expect(elapsedMs).toBeLessThan(180_000);
       }
 
       /* Janela cobertura (estimados): herdada do Stage 2 — invariante
