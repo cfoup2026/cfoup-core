@@ -86,6 +86,7 @@ function transactionToEvento(
   }
 
   const docRef = tx.docNumber.trim();
+  const historico = tx.history.trim();
   const direcao = tx.direction === 'credit' ? 'entrada' : 'saida';
 
   const baseInput: Parameters<typeof buildEventoCaixaBase>[0] = {
@@ -97,6 +98,10 @@ function transactionToEvento(
     data_esperada: tx.date,
   };
   if (docRef !== '') baseInput.documento_ref = docRef;
+  // Estágio 1.6: histórico bruto do extrato CEF é a descrição mais
+  // rica para o motor de classificação ("PIX RECEBIDO", "TED ENVIADA",
+  // "ENERGIA ELETRICA", etc).
+  if (historico !== '') baseInput.descricao_origem = historico;
 
   const base = buildEventoCaixaBase(baseInput, ctx);
   const ev: EventoCaixa = {

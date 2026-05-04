@@ -193,4 +193,30 @@ describe('fknApAdapter', () => {
     };
     expect(() => fknApAdapter([bad], ctx)).toThrow(IngestaoError);
   });
+
+  /* ─── Estágio 1.6 — texto observado da origem ─── */
+
+  it('preenche contraparte_nome_origem com vendorName (raw)', () => {
+    const eventos = fknApAdapter(PAYABLES_FIXTURE, ctx);
+    const ev = eventos.find((e) => e.origem_ref === 'fkn-ap:1')!;
+    expect(ev.contraparte_nome_origem).toBe('Fornecedor Alpha LTDA');
+  });
+
+  it('vendorName em branco → contraparte_nome_origem undefined (não vazia)', () => {
+    const semNome: Payable = {
+      ...PAYABLES_FIXTURE[0]!,
+      id: 'fkn-ap:noname',
+      vendorName: '   ',
+    };
+    const eventos = fknApAdapter([semNome], ctx);
+    expect(eventos[0]!.contraparte_nome_origem).toBeUndefined();
+  });
+
+  it('FKN AP não preenche descricao_origem nem conta_origem_nome (formato CSV não traz)', () => {
+    const eventos = fknApAdapter(PAYABLES_FIXTURE, ctx);
+    for (const ev of eventos) {
+      expect(ev.descricao_origem).toBeUndefined();
+      expect(ev.conta_origem_nome).toBeUndefined();
+    }
+  });
 });

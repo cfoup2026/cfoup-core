@@ -440,6 +440,12 @@ function promoveConfirmadoEmRealizado(
   if (conf.competencia !== undefined) ev.competencia = conf.competencia;
   if (conf.cenario_id !== undefined) ev.cenario_id = conf.cenario_id;
   if (conf.observacao !== undefined) ev.observacao = conf.observacao;
+  if (conf.descricao_origem !== undefined)
+    ev.descricao_origem = conf.descricao_origem;
+  if (conf.contraparte_nome_origem !== undefined)
+    ev.contraparte_nome_origem = conf.contraparte_nome_origem;
+  if (conf.conta_origem_nome !== undefined)
+    ev.conta_origem_nome = conf.conta_origem_nome;
 
   return ev;
 }
@@ -492,6 +498,12 @@ function addReconciliacaoAudit(
   if (tit.competencia !== undefined) ev.competencia = tit.competencia;
   if (tit.cenario_id !== undefined) ev.cenario_id = tit.cenario_id;
   if (tit.observacao !== undefined) ev.observacao = tit.observacao;
+  if (tit.descricao_origem !== undefined)
+    ev.descricao_origem = tit.descricao_origem;
+  if (tit.contraparte_nome_origem !== undefined)
+    ev.contraparte_nome_origem = tit.contraparte_nome_origem;
+  if (tit.conta_origem_nome !== undefined)
+    ev.conta_origem_nome = tit.conta_origem_nome;
 
   return ev;
 }

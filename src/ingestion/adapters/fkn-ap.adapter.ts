@@ -8,11 +8,21 @@ import { buildEventoCaixaBase } from '../buildEventoCaixaBase.js';
 function payableOptionals(p: Payable): {
   contraparte_id?: string;
   documento_ref?: string;
+  contraparte_nome_origem?: string;
 } {
-  const out: { contraparte_id?: string; documento_ref?: string } = {};
+  const out: {
+    contraparte_id?: string;
+    documento_ref?: string;
+    contraparte_nome_origem?: string;
+  } = {};
   if (p.vendorCode > 0) out.contraparte_id = String(p.vendorCode);
   const doc = p.docNumber.trim();
   if (doc !== '') out.documento_ref = doc;
+  // Estágio 1.6: preserva nome do fornecedor como veio do FKN.
+  // FKN AP não traz description/historico estruturado, só vendorName —
+  // que é o sinal semântico mais rico para o motor de classificação.
+  const vendor = p.vendorName.trim();
+  if (vendor !== '') out.contraparte_nome_origem = vendor;
   return out;
 }
 

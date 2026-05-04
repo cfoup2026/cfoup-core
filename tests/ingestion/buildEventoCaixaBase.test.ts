@@ -226,4 +226,60 @@ describe('buildEventoCaixaBase — validação visível', () => {
       ),
     ).toThrow(/exclusiva do Motor de Histórico/);
   });
+
+  /* ─── Estágio 1.6 — texto observado da origem ─── */
+
+  it('propaga descricao_origem, contraparte_nome_origem, conta_origem_nome quando não-vazios', () => {
+    const base = buildEventoCaixaBase(
+      {
+        origem: 'cef',
+        origem_ref: 'cef-1',
+        valor: 100,
+        direcao: 'saida',
+        data_esperada: VALID_DATE,
+        descricao_origem: 'PIX RECEBIDO',
+        contraparte_nome_origem: 'Cliente Alpha',
+        conta_origem_nome: 'Caixa Geral',
+      },
+      ctx,
+    );
+    expect(base.descricao_origem).toBe('PIX RECEBIDO');
+    expect(base.contraparte_nome_origem).toBe('Cliente Alpha');
+    expect(base.conta_origem_nome).toBe('Caixa Geral');
+  });
+
+  it('strings vazias/whitespace → fields undefined (não persiste lixo)', () => {
+    const base = buildEventoCaixaBase(
+      {
+        origem: 'cef',
+        origem_ref: 'cef-2',
+        valor: 100,
+        direcao: 'saida',
+        data_esperada: VALID_DATE,
+        descricao_origem: '',
+        contraparte_nome_origem: '   ',
+        conta_origem_nome: '\t\n',
+      },
+      ctx,
+    );
+    expect(base.descricao_origem).toBeUndefined();
+    expect(base.contraparte_nome_origem).toBeUndefined();
+    expect(base.conta_origem_nome).toBeUndefined();
+  });
+
+  it('campos ausentes no input → fields undefined no output', () => {
+    const base = buildEventoCaixaBase(
+      {
+        origem: 'fkn',
+        origem_ref: 'fkn-1',
+        valor: 100,
+        direcao: 'saida',
+        data_esperada: VALID_DATE,
+      },
+      ctx,
+    );
+    expect(base.descricao_origem).toBeUndefined();
+    expect(base.contraparte_nome_origem).toBeUndefined();
+    expect(base.conta_origem_nome).toBeUndefined();
+  });
 });

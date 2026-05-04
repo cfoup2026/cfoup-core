@@ -246,6 +246,12 @@ function marcarTransferencia(
     clone.reconciliado_com = ev.reconciliado_com;
   if (ev.reconciliado_em !== undefined)
     clone.reconciliado_em = ev.reconciliado_em;
+  if (ev.descricao_origem !== undefined)
+    clone.descricao_origem = ev.descricao_origem;
+  if (ev.contraparte_nome_origem !== undefined)
+    clone.contraparte_nome_origem = ev.contraparte_nome_origem;
+  if (ev.conta_origem_nome !== undefined)
+    clone.conta_origem_nome = ev.conta_origem_nome;
 
   return clone;
 }

@@ -171,4 +171,30 @@ describe('fknArAdapter', () => {
     expect(() => fknArAdapter([bad], ctx)).toThrow(IngestaoError);
     expect(() => fknArAdapter([bad], ctx)).toThrow(/dueDate/);
   });
+
+  /* ─── Estágio 1.6 — texto observado da origem ─── */
+
+  it('preenche contraparte_nome_origem com customerName (raw)', () => {
+    const eventos = fknArAdapter(RECEIVABLES_FIXTURE, ctx);
+    const ev = eventos.find((e) => e.origem_ref === 'fkn-ar:1')!;
+    expect(ev.contraparte_nome_origem).toBe('Cliente Alpha LTDA');
+  });
+
+  it('customerName em branco → contraparte_nome_origem undefined', () => {
+    const semNome: Receivable = {
+      ...RECEIVABLES_FIXTURE[0]!,
+      id: 'fkn-ar:noname',
+      customerName: '   ',
+    };
+    const eventos = fknArAdapter([semNome], ctx);
+    expect(eventos[0]!.contraparte_nome_origem).toBeUndefined();
+  });
+
+  it('FKN AR não preenche descricao_origem nem conta_origem_nome', () => {
+    const eventos = fknArAdapter(RECEIVABLES_FIXTURE, ctx);
+    for (const ev of eventos) {
+      expect(ev.descricao_origem).toBeUndefined();
+      expect(ev.conta_origem_nome).toBeUndefined();
+    }
+  });
 });

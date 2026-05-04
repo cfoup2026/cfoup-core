@@ -90,6 +90,41 @@ export interface EventoCaixaBase {
   /** Notas livres em PT-BR. */
   observacao?: string;
 
+  /* ───── Texto observado da origem (Estágio 1.6) ───── */
+  /**
+   * Descrição/histórico bruto da transação como veio do sistema-fonte.
+   * **Fato observado, não inferência.** Imutável após ingestão.
+   *
+   * Preservado para alimentar o Motor de Classificação (Estágio 4.5)
+   * com o texto que o motor consome (`SourceTransaction.description`).
+   *
+   * Disponibilidade por origem:
+   *  - CEF: `Transaction.history` (rico — "PIX RECEBIDO", "TED ENVIADA",
+   *    "ENERGIA ELETRICA", etc).
+   *  - FKN AP/AR: indisponível no formato CSV — campo permanece `undefined`.
+   */
+  descricao_origem?: string;
+  /**
+   * Nome da contraparte como veio do sistema-fonte (raw, antes de
+   * qualquer normalização). **Fato observado.**
+   *
+   * Disponibilidade por origem:
+   *  - FKN AP: `Payable.vendorName` (ex: "CHEMIX PROD QUIMICOS").
+   *  - FKN AR: `Receivable.customerName` (ex: "SNOW CLEAN DISTRIB").
+   *  - CEF: tipicamente indisponível (não estruturado no extrato).
+   */
+  contraparte_nome_origem?: string;
+  /**
+   * Nome da conta/categoria original do sistema-fonte. **Fato observado.**
+   * Em ERPs com plano de contas estruturado, traz a categoria contábil
+   * tal qual lançada (ex: "Despesa Operacional > Aluguel").
+   *
+   * Disponibilidade por origem: nenhuma das 3 fontes atuais (FKN AP,
+   * FKN AR, CEF) traz esse campo no formato CSV consumido. Reservado
+   * para sistemas futuros (Pluggy, contábil estruturado).
+   */
+  conta_origem_nome?: string;
+
   /* ───── Auditoria de reconciliação (Estágio 3.1) ───── */
 
   /**

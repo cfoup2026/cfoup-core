@@ -35,6 +35,12 @@ export interface BuildEventoCaixaBaseInput {
   documento_ref?: string;
   /** Mês/ano de competência contábil quando aplicável. */
   competencia?: string;
+  /** Texto observado da origem (Estágio 1.6). Veja `EventoCaixaBase`. */
+  descricao_origem?: string;
+  /** Nome da contraparte como veio da origem (Estágio 1.6). */
+  contraparte_nome_origem?: string;
+  /** Nome da conta/categoria original (Estágio 1.6). */
+  conta_origem_nome?: string;
 }
 
 /** Verifica se um Date é válido (não-NaN). */
@@ -125,6 +131,23 @@ export function buildEventoCaixaBase(
   if (ctx.source_company_code !== undefined) {
     base.source_company_code = ctx.source_company_code;
   }
+  // Estágio 1.6: texto observado da origem.
+  // Filtramos strings vazias/whitespace-only — preservar `undefined`
+  // em vez de `''` deixa downstream (motor de classificação) tratar
+  // ausência uniformemente.
+  if (isNonBlank(input.descricao_origem)) {
+    base.descricao_origem = input.descricao_origem;
+  }
+  if (isNonBlank(input.contraparte_nome_origem)) {
+    base.contraparte_nome_origem = input.contraparte_nome_origem;
+  }
+  if (isNonBlank(input.conta_origem_nome)) {
+    base.conta_origem_nome = input.conta_origem_nome;
+  }
 
   return base;
+}
+
+function isNonBlank(s: string | undefined): s is string {
+  return typeof s === 'string' && s.trim() !== '';
 }

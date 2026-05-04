@@ -57,6 +57,11 @@ export interface MkEventoArgs {
   // Transferência interna (testes que querem simular par marcado)
   is_transferencia?: boolean;
   transferencia_par_id?: string;
+
+  // Texto observado da origem (Estágio 1.6)
+  descricao_origem?: string;
+  contraparte_nome_origem?: string;
+  conta_origem_nome?: string;
 }
 
 export function mkEvento(args: MkEventoArgs): EventoCaixa {
@@ -149,6 +154,12 @@ export function mkEvento(args: MkEventoArgs): EventoCaixa {
     result.reconciliado_em = args.reconciliado_em;
   if (args.transferencia_par_id !== undefined)
     result.transferencia_par_id = args.transferencia_par_id;
+  if (args.descricao_origem !== undefined)
+    result.descricao_origem = args.descricao_origem;
+  if (args.contraparte_nome_origem !== undefined)
+    result.contraparte_nome_origem = args.contraparte_nome_origem;
+  if (args.conta_origem_nome !== undefined)
+    result.conta_origem_nome = args.conta_origem_nome;
 
   return result;
 }

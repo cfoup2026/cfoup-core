@@ -234,4 +234,37 @@ describe('cefAdapter — validação visível', () => {
       IngestaoError,
     );
   });
+
+  /* ─── Estágio 1.6 — texto observado da origem ─── */
+
+  it('preenche descricao_origem com Transaction.history', () => {
+    const out = cefAdapter(CEF_RESULT_FIXTURE, ctx);
+    // Fixture tem 'TED RECEBIDA CLIENTE ALPHA', etc.
+    const ev = out.eventos.find(
+      (e) => e.descricao_origem === 'TED RECEBIDA CLIENTE ALPHA',
+    );
+    expect(ev).toBeDefined();
+    const tarifa = out.eventos.find(
+      (e) => e.descricao_origem === 'TARIFA BANCARIA MENSAL',
+    );
+    expect(tarifa).toBeDefined();
+  });
+
+  it('history em branco → descricao_origem undefined', () => {
+    const semHistory: Transaction = {
+      ...CEF_TRANSACTIONS_FIXTURE[0]!,
+      id: 'cef:nohist',
+      history: '   ',
+    };
+    const out = cefAdapter({ ok: [semHistory], balances: [] }, ctx);
+    expect(out.eventos[0]!.descricao_origem).toBeUndefined();
+  });
+
+  it('CEF não preenche contraparte_nome_origem nem conta_origem_nome', () => {
+    const out = cefAdapter(CEF_RESULT_FIXTURE, ctx);
+    for (const ev of out.eventos) {
+      expect(ev.contraparte_nome_origem).toBeUndefined();
+      expect(ev.conta_origem_nome).toBeUndefined();
+    }
+  });
 });

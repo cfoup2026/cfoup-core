@@ -8,11 +8,20 @@ import { buildEventoCaixaBase } from '../buildEventoCaixaBase.js';
 function receivableOptionals(r: Receivable): {
   contraparte_id?: string;
   documento_ref?: string;
+  contraparte_nome_origem?: string;
 } {
-  const out: { contraparte_id?: string; documento_ref?: string } = {};
+  const out: {
+    contraparte_id?: string;
+    documento_ref?: string;
+    contraparte_nome_origem?: string;
+  } = {};
   if (r.customerCode > 0) out.contraparte_id = String(r.customerCode);
   const doc = r.docNumber.trim();
   if (doc !== '') out.documento_ref = doc;
+  // Estágio 1.6: preserva nome do cliente como veio do FKN.
+  // FKN AR não traz description/historico estruturado.
+  const customer = r.customerName.trim();
+  if (customer !== '') out.contraparte_nome_origem = customer;
   return out;
 }
 
