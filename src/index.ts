@@ -8,6 +8,7 @@ export * from './historico/index.js';
 export * from './reconciliacao/index.js';
 export * from './cobertura/index.js';
 export * from './confianca/index.js';
+export * from './veredito/index.js';
 /* Stage 4.5 — Classification Bridge. Re-export targetado pra evitar
  * colisão com `ClassificationResult` do Núcleo (já exportado via
  * `./classification/index.js`). Bridge tem seu próprio tipo de mesmo

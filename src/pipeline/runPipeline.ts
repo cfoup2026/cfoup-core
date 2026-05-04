@@ -1,10 +1,11 @@
 /**
- * Orquestrador unificado do pipeline CF13: Stage 1 → Bridge → 2 → 3 → 4 → 5.
+ * Orquestrador unificado do pipeline CF13: Stage 1 → Bridge → 2 → 3 → 4 → 5 → 6 → 7.
  *
  * Recebe input já adaptado pelo Stage 1 (eventos + saldos + vendas
  * opcionais) e roda Bridge → MotorHistorico → MotorReconciliacao →
- * projetaCliente → MotorCobertura em ordem fixa, devolvendo todas as
- * estruturas intermediárias para auditoria/relatório.
+ * projetaCliente → MotorCobertura → calcularConfianca → calcularVeredito
+ * em ordem fixa, devolvendo todas as estruturas intermediárias para
+ * auditoria/relatório.
  *
  * Carregamento de fixtures (parsers + adapters Stage 1) fica fora
  * deste helper — é responsabilidade dos smokes/runtimes que conhecem
@@ -36,9 +37,17 @@ import {
   type ClassifierAdapter,
 } from '../classification-bridge/index.js';
 import { MotorCobertura } from '../cobertura/index.js';
+import {
+  calcularConfianca,
+  type ConfiancaResult,
+} from '../confianca/index.js';
 import { MotorHistorico } from '../historico/index.js';
 import { projetaCliente } from '../projecao/index.js';
 import { MotorReconciliacao } from '../reconciliacao/index.js';
+import {
+  calcularVeredito,
+  type VereditoResult,
+} from '../veredito/index.js';
 import type {
   CoberturaResult,
   Criticidade,
@@ -103,6 +112,10 @@ export interface RunPipelineOutput {
   projecao: ProjecaoCliente;
   /** Detecção de cobertura sobre o pipeline (Stage 5). */
   cobertura: CoberturaResult;
+  /** Confiança da projeção (Stage 6). */
+  confianca: ConfiancaResult;
+  /** Veredito final por unidade + consolidado (Stage 7). */
+  veredito: VereditoResult;
 }
 
 /**
@@ -189,6 +202,20 @@ export function runPipeline(input: RunPipelineInput): RunPipelineOutput {
     geradoEm: input.geradoEm,
   });
 
+  /* ─── Stage 6 — Motor de Confiança ─── */
+  // Função pura. Lê eventos reconciliados + projecao + cobertura.
+  // Não muta nenhum input; retorna ConfiancaResult novo.
+  const confianca = calcularConfianca({
+    projecao,
+    cobertura,
+    eventos: reconciliacao.eventos,
+  });
+
+  /* ─── Stage 7 — Motor de Veredito ─── */
+  // Fecha o pipeline. Lê projecao + cobertura + confianca, retorna
+  // VereditoResult com texto final renderizado.
+  const veredito = calcularVeredito({ projecao, cobertura, confianca });
+
   return {
     bridged,
     historico,
@@ -196,5 +223,7 @@ export function runPipeline(input: RunPipelineInput): RunPipelineOutput {
     comercial,
     projecao,
     cobertura,
+    confianca,
+    veredito,
   };
 }
