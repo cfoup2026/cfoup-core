@@ -109,3 +109,16 @@ export type {
   ProjetaClienteInput,
   TransferenciaNeutralizada,
 } from './projecao.js';
+
+/* ─── CF13 — Estágio 5.1: Detecção de cobertura ─── */
+export type {
+  AcaoCobertura,
+  CoberturaEstatisticas,
+  CoberturaResult,
+  CoberturaStatus,
+  MotivoInsuficiencia,
+  Pendencia,
+  TipoMotivoInsuficiencia,
+  TipoPendencia,
+} from './cobertura.js';
+export { CoberturaError } from './cobertura.js';

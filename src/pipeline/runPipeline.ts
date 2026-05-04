@@ -1,10 +1,10 @@
 /**
- * Orquestrador unificado do pipeline CF13: Stage 1 → Bridge → 2 → 3 → 4.
+ * Orquestrador unificado do pipeline CF13: Stage 1 → Bridge → 2 → 3 → 4 → 5.
  *
  * Recebe input já adaptado pelo Stage 1 (eventos + saldos + vendas
  * opcionais) e roda Bridge → MotorHistorico → MotorReconciliacao →
- * projetaCliente em ordem fixa, devolvendo todas as estruturas
- * intermediárias para auditoria/relatório.
+ * projetaCliente → MotorCobertura em ordem fixa, devolvendo todas as
+ * estruturas intermediárias para auditoria/relatório.
  *
  * Carregamento de fixtures (parsers + adapters Stage 1) fica fora
  * deste helper — é responsabilidade dos smokes/runtimes que conhecem
@@ -35,10 +35,12 @@ import {
   type ClassifyEventosOutput,
   type ClassifierAdapter,
 } from '../classification-bridge/index.js';
+import { MotorCobertura } from '../cobertura/index.js';
 import { MotorHistorico } from '../historico/index.js';
 import { projetaCliente } from '../projecao/index.js';
 import { MotorReconciliacao } from '../reconciliacao/index.js';
 import type {
+  CoberturaResult,
   Criticidade,
   EventoCaixa,
   HistoricoOperacional,
@@ -72,6 +74,9 @@ export interface RunPipelineInput {
   geradoEm: Date;
   /** Quando a reconciliação foi feita; default = `geradoEm`. */
   reconciliadoEm?: Date;
+  /** Quando a detecção de cobertura foi feita (Stage 5); default =
+   *  `geradoEm`. Injetável para determinismo de auditoria. */
+  detectadoEm?: Date;
   /** Política de calendário operacional. Default = `BrazilCalendarPolicy`. */
   calendar?: CalendarPolicy;
 
@@ -96,6 +101,8 @@ export interface RunPipelineOutput {
   comercial: ReconciliacaoComercialResult;
   /** Projeção 13 semanas com caixa mínimo (Stage 4). */
   projecao: ProjecaoCliente;
+  /** Detecção de cobertura sobre o pipeline (Stage 5). */
+  cobertura: CoberturaResult;
 }
 
 /**
@@ -166,5 +173,28 @@ export function runPipeline(input: RunPipelineInput): RunPipelineOutput {
     volatilidades: historico.volatilidades,
   });
 
-  return { bridged, historico, reconciliacao, comercial, projecao };
+  /* ─── Stage 5 — Detecção de cobertura ─── */
+  // `detectadoEm` injetado quando explicitamente passado; senão herda
+  // `geradoEm`. Stage 5 é determinístico — mesmas datas → mesmo output.
+  const motorCobOpts: { detectadoEm?: Date } = {};
+  if (input.detectadoEm !== undefined) motorCobOpts.detectadoEm = input.detectadoEm;
+  const motorCob = new MotorCobertura(motorCobOpts);
+  const cobertura = motorCob.run({
+    eventos: reconciliacao.eventos,
+    historico,
+    projecao,
+    saldos: input.saldos,
+    cliente_id: input.cliente_id,
+    legal_entity_ids_ativas: input.legal_entity_ids_ativas,
+    geradoEm: input.geradoEm,
+  });
+
+  return {
+    bridged,
+    historico,
+    reconciliacao,
+    comercial,
+    projecao,
+    cobertura,
+  };
 }
