@@ -10,6 +10,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./cf13/contract": {
+      "types": "./dist/cf13/contract/index.d.ts",
+      "import": "./dist/cf13/contract/index.js"
     }
   },
   "files": [
