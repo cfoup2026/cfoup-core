@@ -29,3 +29,25 @@ export {
 export type { ClassificationResult as BridgeClassificationResult } from './classification-bridge/index.js';
 export * from './projecao/index.js';
 export * from './pipeline/index.js';
+
+/* CF13 UI Contract — re-export targetado para evitar colisão de nomes
+ * com tipos snake_case do core (SemanaProjecao, ProjecaoCliente,
+ * CoberturaResult, ConfiancaResult, VereditoResult, etc.). Os tipos do
+ * contrato (camelCase) ficam acessíveis via `@cfoup/core/cf13/contract`.
+ *
+ * A raiz expõe só os símbolos sem colisão — em particular `CF13Output`
+ * e `runCF13Pipeline` cobrem o caso de uso comum do consumer
+ * (`cfoup-overview-v3`). Tipos internos do contrato resolvidos via
+ * type-graph quando o consumer faz `import { CF13Output }`. */
+export {
+  runCF13Pipeline,
+  CF13ContractIntegrityError,
+  CF13_ENGINE_VERSION,
+  type CF13Meta,
+  type CF13Output,
+  type CF13PipelineInput,
+  type PendenciaCF13,
+  type OrigemPendencia,
+  type SeveridadePendencia,
+  type AcaoSugerida,
+} from './cf13/contract/index.js';
