@@ -3,6 +3,11 @@ coverage
 # Fixtures Gregorutt full (dados sensíveis de cliente — só rodam local).
 # Sample anonimizado para CI fica em tests/fixtures/gregorutt-sample/ (commitado).
 tests/fixtures/gregorutt/
+# CEF mensais Gregorutt (privacidade — extratos bancários reais).
+# `cef_apr25.txt`, `cef_apr26_com_saldo.pdf` e `cef_synthetic.txt` já estão
+# tracked em HEAD; novos arquivos `cef_*` ficam local-only via essa regra.
+tests/fixtures/cef_*.txt
+tests/fixtures/cef_*.pdf
 # Output local do gerador de fixtures (scripts/regen-gregorutt-fixture.mts).
 # Conteúdo derivado, regenerável; não commita.
 scripts/output/

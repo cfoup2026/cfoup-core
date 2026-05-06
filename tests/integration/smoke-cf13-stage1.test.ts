@@ -10,10 +10,15 @@
  *
  * Asserções: ver §4 do prompt 1.4.
  */
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+
+import {
+  listCefFiles,
+  listCefPdfFiles,
+} from '../../scripts/_helpers/list-cef-files.js';
 
 import {
   BrazilCalendarPolicy,
@@ -109,27 +114,11 @@ function loadCef(path: string): {
   return { ok, balances: r.balances };
 }
 
-function listCefFiles(dir: string): string[] {
-  return readdirSync(dir)
-    .filter(
-      (f) =>
-        f.toLowerCase().startsWith('cef') &&
-        f.toLowerCase().endsWith('.txt'),
-    )
-    .map((f) => resolve(dir, f))
-    .sort();
-}
-
-function listCefPdfFiles(dir: string): string[] {
-  return readdirSync(dir)
-    .filter(
-      (f) =>
-        f.toLowerCase().startsWith('cef') &&
-        f.toLowerCase().endsWith('.pdf'),
-    )
-    .map((f) => resolve(dir, f))
-    .sort();
-}
+/* `listCefFiles` / `listCefPdfFiles` movidos para
+ * `scripts/_helpers/list-cef-files.ts` em Pipeline E pra serem reusados
+ * pelo regen script. Versão extraída ordena cronologicamente
+ * (vs lex anterior) e exclui `cef_synthetic.*` — ambos comportamentos
+ * compatíveis com os asserts atuais do smoke. */
 
 /** PDFs CEF "com Saldo" são a fonte de `BalanceSnapshot`. Os TXTs do CEF
  *  Gregorutt não trazem rows SALDO DIA — só PDFs trazem. Para o smoke,
