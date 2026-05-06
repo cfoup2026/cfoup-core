@@ -58,6 +58,9 @@ const ctx: AdapterContext = {
   cliente_id: 'gregorutt',
   legal_entity_id: 'companhia_1',
   source_company_code: 'comp1',
+  // Fallback: PDFs Gregorutt não trazem header `Conta:` — parser entrega
+  // accountId='' e o adapter exige fallback no ctx (Fix 2).
+  conta_bancaria_id: '0423012920005778782426',
   calendar,
 };
 
@@ -185,19 +188,11 @@ describe('CF13 Stage 1 — Smoke Gregorutt', () => {
         : listCefFiles(FULL_CEF_DIR);
       expect(cefFiles.length).toBeGreaterThan(0);
 
-      // Carrega TXTs uma vez — usados pra eventos e pra extrair o accountId
-      // canônico que será injetado nos saldos do PDF (parser PDF do nucleus
-      // não captura o cabeçalho `Conta` nos PDFs Gregorutt — formato distinto
-      // do fixture de teste do nucleus).
-      const cefTxtParsed = cefFiles.map((f) => loadCef(f));
-      const cefTxtResults = cefTxtParsed.map((r) => cefAdapter(r, ctx));
+      const cefTxtResults = cefFiles.map((f) => cefAdapter(loadCef(f), ctx));
       const cefEventos = cefTxtResults.flatMap((r) => r.eventos);
 
-      const canonicalAccountId =
-        cefTxtParsed[0]?.ok[0]?.accountId ?? '';
-      expect(canonicalAccountId.length).toBeGreaterThan(0);
-
       // Saldos CEF saem dos PDFs "com Saldo" — TXTs não trazem SALDO DIA.
+      // accountId='' do parser PDF cai no fallback ctx.conta_bancaria_id (Fix 2).
       const cefPdfFiles = SAMPLE_MODE
         ? [resolve(FIXTURES_ROOT, 'gregorutt-sample', 'cef-sample-com-saldo.pdf')]
         : listCefPdfFiles(FULL_CEF_DIR);
@@ -206,13 +201,7 @@ describe('CF13 Stage 1 — Smoke Gregorutt', () => {
       );
       const cefSaldos: OpeningBalanceSnapshot[] = [];
       for (const balances of cefPdfBalanceArrays) {
-        // Enriquece accountId vazio com o canônico vindo do TXT.
-        const enriched = balances.map((b) =>
-          b.accountId === '' ? { ...b, accountId: canonicalAccountId } : b,
-        );
-        // Reusa o adapter CEF apenas para converter `balances` em
-        // `OpeningBalanceSnapshot[]` — passamos `ok: []` pra não gerar eventos.
-        const out = cefAdapter({ ok: [], balances: enriched }, ctx);
+        const out = cefAdapter({ ok: [], balances }, ctx);
         cefSaldos.push(...out.saldos);
       }
 

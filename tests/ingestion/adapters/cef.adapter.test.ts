@@ -268,3 +268,85 @@ describe('cefAdapter — validação visível', () => {
     }
   });
 });
+
+/**
+ * Fix 2 — `conta_bancaria_id` no OpeningBalanceSnapshot nunca pode ser "".
+ *
+ * Regra: parser CEF tenta extrair `accountId` do header do PDF; quando
+ * entrega "", `ctx.conta_bancaria_id` é fallback obrigatório. "" nunca
+ * propaga pro adapter de saída.
+ *
+ * Prioridade: parser > ctx. ctx serve apenas como fallback.
+ */
+describe('cefAdapter — saldos: conta_bancaria_id (Fix 2)', () => {
+  const PARSER_ID = '0423012920005778782426';
+  const CTX_ID = 'cef:5778-2';
+  const baseSnapshot = (accountId: string): BalanceSnapshot => ({
+    accountId,
+    date: new Date(Date.UTC(2026, 2, 31)),
+    amount: 12000,
+    source: 'bank-statement',
+  });
+
+  it('A — parser preenche, ctx vazio: parser ganha', () => {
+    const out = cefAdapter(
+      { ok: [], balances: [baseSnapshot(PARSER_ID)] },
+      ctx, // ctx sem conta_bancaria_id (definido no topo do arquivo)
+    );
+    expect(out.saldos[0]!.conta_bancaria_id).toBe(PARSER_ID);
+  });
+
+  it('B — parser preenche, ctx tem valor diferente: parser tem prioridade', () => {
+    const ctxComConta: AdapterContext = {
+      cliente_id: 'c1',
+      legal_entity_id: 'le1',
+      conta_bancaria_id: CTX_ID,
+      calendar,
+    };
+    const out = cefAdapter(
+      { ok: [], balances: [baseSnapshot(PARSER_ID)] },
+      ctxComConta,
+    );
+    expect(out.saldos[0]!.conta_bancaria_id).toBe(PARSER_ID);
+  });
+
+  it('C — parser vazio, ctx fornece: fallback aplica + id derivado do valor final', () => {
+    const ctxComConta: AdapterContext = {
+      cliente_id: 'c1',
+      legal_entity_id: 'le1',
+      conta_bancaria_id: CTX_ID,
+      calendar,
+    };
+    const out = cefAdapter(
+      { ok: [], balances: [baseSnapshot('')] },
+      ctxComConta,
+    );
+    expect(out.saldos[0]!.conta_bancaria_id).toBe(CTX_ID);
+    expect(out.saldos[0]!.id).toContain(CTX_ID);
+    expect(out.saldos[0]!.id).not.toMatch(/__/); // não tem `__` (que seria `_${""}_`)
+  });
+
+  it('D — parser vazio, ctx ausente: throws IngestaoError com mensagem específica', () => {
+    expect(() =>
+      cefAdapter({ ok: [], balances: [baseSnapshot('')] }, ctx),
+    ).toThrow(IngestaoError);
+    expect(() =>
+      cefAdapter({ ok: [], balances: [baseSnapshot('')] }, ctx),
+    ).toThrow(/conta_bancaria_id obrigatório/);
+  });
+
+  it('E — parser vazio, ctx vazio explícito: throws IngestaoError (string vazia não vale)', () => {
+    const ctxVazio: AdapterContext = {
+      cliente_id: 'c1',
+      legal_entity_id: 'le1',
+      conta_bancaria_id: '',
+      calendar,
+    };
+    expect(() =>
+      cefAdapter({ ok: [], balances: [baseSnapshot('')] }, ctxVazio),
+    ).toThrow(IngestaoError);
+    expect(() =>
+      cefAdapter({ ok: [], balances: [baseSnapshot('')] }, ctxVazio),
+    ).toThrow(/conta_bancaria_id obrigatório/);
+  });
+});

@@ -74,6 +74,9 @@ const ctx: AdapterContext = {
   cliente_id: 'gregorutt',
   legal_entity_id: 'companhia_1',
   source_company_code: 'comp1',
+  // Fallback: PDFs Gregorutt não trazem header `Conta:` — parser entrega
+  // accountId='' e o adapter exige fallback no ctx (Fix 2).
+  conta_bancaria_id: '0423012920005778782426',
   calendar,
 };
 
