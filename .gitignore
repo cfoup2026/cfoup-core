@@ -3,6 +3,9 @@ coverage
 # Fixtures Gregorutt full (dados sensíveis de cliente — só rodam local).
 # Sample anonimizado para CI fica em tests/fixtures/gregorutt-sample/ (commitado).
 tests/fixtures/gregorutt/
+# Output local do gerador de fixtures (scripts/regen-gregorutt-fixture.mts).
+# Conteúdo derivado, regenerável; não commita.
+scripts/output/
 .DS_Store
 *.log
 .env
