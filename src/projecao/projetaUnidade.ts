@@ -340,6 +340,27 @@ function computaCaixaInicial(
     return { valor: 0, stale: false, ausente: true };
   }
 
+  // Invariante: dentro do escopo (cliente, legal_entity), não pode
+  // haver 2+ snapshots com a mesma (data_referencia, conta_bancaria_id).
+  // Adapter CEF (Fix 1) já agrega, mas snapshots vindos de outras
+  // origens (manual, FKN futuro, ingestão direta) precisam respeitar
+  // a mesma chave. Falha visível em vez de escolher silencioso.
+  const vistos = new Map<string, OpeningBalanceSnapshot>();
+  for (const s of elegiveis) {
+    const dateKey = s.data_referencia.toISOString().slice(0, 10);
+    const key = `${s.cliente_id}|${s.legal_entity_id}|${dateKey}|${s.conta_bancaria_id}`;
+    const previo = vistos.get(key);
+    if (previo !== undefined) {
+      throw new ProjecaoError(
+        `computaCaixaInicial: snapshots duplicados com mesma chave ` +
+          `(cliente_id=${s.cliente_id}, legal_entity_id=${s.legal_entity_id}, ` +
+          `data_referencia=${dateKey}, conta_bancaria_id=${s.conta_bancaria_id}); ` +
+          `ids conflitantes: '${previo.id}' e '${s.id}'`,
+      );
+    }
+    vistos.set(key, s);
+  }
+
   // Ordem desc por data_referencia, depois asc por id (det).
   const ordenado = [...elegiveis].sort((a, b) => {
     const dd = b.data_referencia.getTime() - a.data_referencia.getTime();
