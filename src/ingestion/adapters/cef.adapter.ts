@@ -69,8 +69,9 @@ export function cefAdapter(
     eventos.push(transactionToEvento(tx, ctx));
   }
 
+  const aggregated = aggregateBalances(input.balances, ctx);
   const saldos: OpeningBalanceSnapshot[] = [];
-  for (const b of input.balances) {
+  for (const b of aggregated) {
     saldos.push(snapshotToOpening(b, ctx));
   }
 
@@ -130,21 +131,7 @@ function snapshotToOpening(
     );
   }
 
-  // Resolve `conta_bancaria_id`: parser tem prioridade; ctx é fallback
-  // obrigatório quando parser entrega "". String vazia nunca propaga.
-  let contaBancariaId: string;
-  if (snapshot.accountId !== '') {
-    contaBancariaId = snapshot.accountId;
-  } else if (
-    ctx.conta_bancaria_id !== undefined &&
-    ctx.conta_bancaria_id !== ''
-  ) {
-    contaBancariaId = ctx.conta_bancaria_id;
-  } else {
-    throw new IngestaoError(
-      `BalanceSnapshot accountId="": conta_bancaria_id obrigatório no contexto quando parser não extrai`,
-    );
-  }
+  const contaBancariaId = resolveContaBancariaId(snapshot.accountId, ctx);
 
   // Sufixo de data no id usa YYYY-MM-DD (UTC) — datas do parser já vêm
   // em UTC à meia-noite, então slice(0,10) é estável.
@@ -162,4 +149,63 @@ function snapshotToOpening(
     criado_em: new Date(),
     criado_por: 'sistema',
   };
+}
+
+/**
+ * Resolve `conta_bancaria_id` final: parser tem prioridade; ctx é
+ * fallback obrigatório quando `accountId === ''`. String vazia nunca
+ * propaga. Compartilhado entre `aggregateBalances` (pra construir chave
+ * de grupo) e `snapshotToOpening` (pra preencher campo final).
+ */
+function resolveContaBancariaId(
+  accountId: string,
+  ctx: AdapterContext,
+): string {
+  if (accountId !== '') return accountId;
+  if (
+    ctx.conta_bancaria_id !== undefined &&
+    ctx.conta_bancaria_id !== ''
+  ) {
+    return ctx.conta_bancaria_id;
+  }
+  throw new IngestaoError(
+    `BalanceSnapshot accountId="": conta_bancaria_id obrigatório no contexto quando parser não extrai`,
+  );
+}
+
+/**
+ * Agrega múltiplos `BalanceSnapshot` por chave `(date_iso, conta-resolvida)`.
+ *
+ * Motivação: o parser CEF PDF emite um snapshot por linha "Saldo X,XX C/D"
+ * intercalada — N transações no mesmo dia → N snapshots com mesma data.
+ * O caixa inicial precisa do saldo end-of-day, não de um running balance
+ * arbitrário no meio do dia.
+ *
+ * Heurística: dentro de cada grupo (data, conta), o **último em ordem de
+ * chegada** vence. Justificativa: o parser emite na ordem em que linhas
+ * "Saldo" aparecem no extrato, e a última naquele dia é o saldo
+ * end-of-day. `Map.set` sobrescreve a chave; V8 garante ordem de inserção
+ * em `Map.values()`, então o resultado é determinístico.
+ *
+ * Validação de `date` acontece aqui (early throw) — `snapshotToOpening`
+ * mantém a checagem como defense em depth, mas o erro estruturado vem
+ * dessa camada quando há lote.
+ */
+function aggregateBalances(
+  balances: readonly BalanceSnapshot[],
+  ctx: AdapterContext,
+): BalanceSnapshot[] {
+  const byKey = new Map<string, BalanceSnapshot>();
+  for (const b of balances) {
+    if (!(b.date instanceof Date) || Number.isNaN(b.date.getTime())) {
+      throw new IngestaoError(
+        `BalanceSnapshot accountId=${b.accountId}: date ausente ou inválida`,
+      );
+    }
+    const conta = resolveContaBancariaId(b.accountId, ctx);
+    const dateKey = b.date.toISOString().slice(0, 10);
+    const key = `${dateKey}|${conta}`;
+    byKey.set(key, b);
+  }
+  return [...byKey.values()];
 }

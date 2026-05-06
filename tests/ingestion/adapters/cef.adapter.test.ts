@@ -350,3 +350,136 @@ describe('cefAdapter — saldos: conta_bancaria_id (Fix 2)', () => {
     ).toThrow(/conta_bancaria_id obrigatório/);
   });
 });
+
+/**
+ * Fix 1 — Adapter agrega múltiplos BalanceSnapshot por (data, conta_bancaria_id-resolvido).
+ *
+ * Motivação: o parser CEF PDF emite um BalanceSnapshot por linha "Saldo X,XX C/D"
+ * intercalada com transações. N transações no mesmo dia → N snapshots com a
+ * mesma data. Cliente real (Gregorutt 2026-04-16) gerou 21 snapshots colapsados
+ * em 1 dia; pipeline pegava o errado por sort instável + accountId vazio.
+ *
+ * Estratégia: agrupar por (date, conta_bancaria_id-resolvido). Pra cada grupo,
+ * pegar o ÚLTIMO em ordem de chegada — heurística "running balance: o último
+ * é o saldo end-of-day" (parser emite na ordem em que aparecem no extrato).
+ *
+ * Parser fica intocado. Adapter agrega.
+ */
+describe('cefAdapter — saldos: agregação por (data, conta_bancaria_id) (Fix 1)', () => {
+  const utcDate = (y: number, m: number, d: number): Date =>
+    new Date(Date.UTC(y, m - 1, d));
+  const mkSnapshot = (
+    accountId: string,
+    date: Date,
+    amount: number,
+  ): BalanceSnapshot => ({
+    accountId,
+    date,
+    amount,
+    source: 'bank-statement',
+  });
+
+  it('F — agregação básica: 3 snapshots no mesmo (data, conta) → 1 saldo, último valor', () => {
+    const date = utcDate(2026, 4, 16);
+    const acct = 'cef:1234';
+    const out = cefAdapter(
+      {
+        ok: [],
+        balances: [
+          mkSnapshot(acct, date, 100),
+          mkSnapshot(acct, date, 200),
+          mkSnapshot(acct, date, 150),
+        ],
+      },
+      ctx,
+    );
+    expect(out.saldos).toHaveLength(1);
+    expect(out.saldos[0]!.valor).toBe(150);
+  });
+
+  it('G — preserva datas distintas (mesma conta): 2 saldos', () => {
+    const acct = 'cef:1234';
+    const out = cefAdapter(
+      {
+        ok: [],
+        balances: [
+          mkSnapshot(acct, utcDate(2026, 4, 1), 1000),
+          mkSnapshot(acct, utcDate(2026, 4, 2), 2000),
+        ],
+      },
+      ctx,
+    );
+    expect(out.saldos).toHaveLength(2);
+  });
+
+  it('H — preserva contas distintas (mesma data): 2 saldos', () => {
+    const date = utcDate(2026, 4, 16);
+    const out = cefAdapter(
+      {
+        ok: [],
+        balances: [
+          mkSnapshot('cef:1234', date, 1000),
+          mkSnapshot('cef:5678', date, 2000),
+        ],
+      },
+      ctx,
+    );
+    expect(out.saldos).toHaveLength(2);
+  });
+
+  it('I — heurística é ORDEM, não MAX por valor', () => {
+    const date = utcDate(2026, 4, 16);
+    const acct = 'cef:1234';
+    // 999 é o MAX, mas 50 é o ÚLTIMO em ordem. O Fix exige último.
+    const out = cefAdapter(
+      {
+        ok: [],
+        balances: [
+          mkSnapshot(acct, date, 100),
+          mkSnapshot(acct, date, 999),
+          mkSnapshot(acct, date, 50),
+        ],
+      },
+      ctx,
+    );
+    expect(out.saldos).toHaveLength(1);
+    expect(out.saldos[0]!.valor).toBe(50);
+  });
+
+  it('J — cenário Gregorutt 2026-04-16 reproduzido: 21 snapshots → 1 saldo (45.230,51)', () => {
+    const date = utcDate(2026, 4, 16);
+    const acct = '0423012920005778782426';
+    const sequencia = [
+      43677.46, 66941.29, 66926.49, 66827.49, 66627.49, 66427.49, 53302.49,
+      53067.49, 52347.49, 52242.12, 43677.46, 50286.87, 50771.87, 43683.71,
+      43687.41, 45110.41, 43677.46, 47370.59, 47393.07, 49026.87, 45230.51,
+    ];
+    const balances = sequencia.map((v) => mkSnapshot(acct, date, v));
+    const out = cefAdapter({ ok: [], balances }, ctx);
+    expect(out.saldos).toHaveLength(1);
+    expect(out.saldos[0]!.valor).toBe(45230.51);
+  });
+
+  it('K — fallback ctx aplica ANTES de agrupar (2 snapshots accountId="" → 1 saldo via ctx)', () => {
+    const date = utcDate(2026, 4, 16);
+    const ctxComConta: AdapterContext = {
+      cliente_id: 'c1',
+      legal_entity_id: 'le1',
+      conta_bancaria_id: 'cef:1234',
+      calendar,
+    };
+    const out = cefAdapter(
+      {
+        ok: [],
+        balances: [
+          mkSnapshot('', date, 100),
+          mkSnapshot('', date, 200),
+        ],
+      },
+      ctxComConta,
+    );
+    expect(out.saldos).toHaveLength(1);
+    expect(out.saldos[0]!.valor).toBe(200);
+    expect(out.saldos[0]!.conta_bancaria_id).toBe('cef:1234');
+  });
+});
