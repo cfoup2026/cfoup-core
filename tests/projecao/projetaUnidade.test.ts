@@ -18,6 +18,7 @@ function snapshot(args: {
   id: string;
   cliente_id?: string;
   legal_entity_id?: string;
+  conta_bancaria_id?: string;
   valor: number;
   data_referencia: Date;
 }): OpeningBalanceSnapshot {
@@ -25,7 +26,7 @@ function snapshot(args: {
     id: args.id,
     cliente_id: args.cliente_id ?? 'c1',
     legal_entity_id: args.legal_entity_id ?? 'u1',
-    conta_bancaria_id: 'b1',
+    conta_bancaria_id: args.conta_bancaria_id ?? 'b1',
     valor: args.valor,
     data_referencia: args.data_referencia,
     origem: 'cef',
@@ -193,6 +194,63 @@ describe('projetaUnidade — caixa inicial', () => {
     expect(r.caixaInicial.stale).toBe(false);
     expect(r.caixaInicial.origem_snapshot_id).toBeUndefined();
     expect(r.caixaInicial.data_referencia).toBeUndefined();
+  });
+
+  /* ─── Fix 3 — invariante de unicidade ───
+   * Adapter (Fix 1) já agrega snapshots por (data, conta_bancaria_id),
+   * mas `computaCaixaInicial` deve defender a invariante mesmo se
+   * snapshots duplicados vierem de outra origem (manual, FKN futuro,
+   * ingestão direta). Falha visivelmente em vez de escolher silencioso.
+   */
+
+  it('L — duplicata de chave completa (cliente, le, data, conta) lança ProjecaoError', () => {
+    const dup1 = snapshot({
+      id: 'dup-1',
+      valor: 100,
+      data_referencia: utc(2026, 4, 30),
+    });
+    const dup2 = snapshot({
+      id: 'dup-2',
+      valor: 200,
+      data_referencia: utc(2026, 4, 30),
+    });
+    const run = (): unknown =>
+      projetaUnidade({
+        eventos: [],
+        saldos: [dup1, dup2],
+        cliente_id: 'c1',
+        legal_entity_id: 'u1',
+        geradoEm: GERADO_EM,
+        calendar,
+      });
+    expect(run).toThrow(ProjecaoError);
+    expect(run).toThrow(/computaCaixaInicial/);
+    expect(run).toThrow(/duplicad/);
+  });
+
+  it('M — multi-conta na mesma data NÃO lança (regressão guard)', () => {
+    const sA = snapshot({
+      id: 'a-conta-snap',
+      conta_bancaria_id: 'a-conta',
+      valor: 100,
+      data_referencia: utc(2026, 4, 30),
+    });
+    const sB = snapshot({
+      id: 'b-conta-snap',
+      conta_bancaria_id: 'b-conta',
+      valor: 200,
+      data_referencia: utc(2026, 4, 30),
+    });
+    const r = projetaUnidade({
+      eventos: [],
+      saldos: [sA, sB],
+      cliente_id: 'c1',
+      legal_entity_id: 'u1',
+      geradoEm: GERADO_EM,
+      calendar,
+    });
+    // Tiebreaker por id asc no sort atual: 'a-conta-snap' < 'b-conta-snap'.
+    expect(r.caixaInicial.valor).toBe(100);
   });
 
   it('snapshots de outras unidades ignorados', () => {

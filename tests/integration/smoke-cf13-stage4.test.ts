@@ -159,12 +159,11 @@ async function runStage1(): Promise<{
   const pdfFiles = SAMPLE_MODE
     ? [SAMPLE_CEF_PDF]
     : listCefPdfFiles(FULL_CEF_DIR);
-  const saldos: OpeningBalanceSnapshot[] = [];
+  const cefPdfBalances: BalanceSnapshot[] = [];
   for (const pdf of pdfFiles) {
-    const balances = await loadCefPdfBalances(pdf);
-    const out = cefAdapter({ ok: [], balances }, ctx);
-    saldos.push(...out.saldos);
+    cefPdfBalances.push(...(await loadCefPdfBalances(pdf)));
   }
+  const saldos = cefAdapter({ ok: [], balances: cefPdfBalances }, ctx).saldos;
   return { eventos: [...ap, ...ar, ...cefEventos], saldos };
 }
 
