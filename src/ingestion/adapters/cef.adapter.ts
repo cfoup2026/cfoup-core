@@ -130,16 +130,32 @@ function snapshotToOpening(
     );
   }
 
+  // Resolve `conta_bancaria_id`: parser tem prioridade; ctx é fallback
+  // obrigatório quando parser entrega "". String vazia nunca propaga.
+  let contaBancariaId: string;
+  if (snapshot.accountId !== '') {
+    contaBancariaId = snapshot.accountId;
+  } else if (
+    ctx.conta_bancaria_id !== undefined &&
+    ctx.conta_bancaria_id !== ''
+  ) {
+    contaBancariaId = ctx.conta_bancaria_id;
+  } else {
+    throw new IngestaoError(
+      `BalanceSnapshot accountId="": conta_bancaria_id obrigatório no contexto quando parser não extrai`,
+    );
+  }
+
   // Sufixo de data no id usa YYYY-MM-DD (UTC) — datas do parser já vêm
   // em UTC à meia-noite, então slice(0,10) é estável.
   const dateKey = snapshot.date.toISOString().slice(0, 10);
-  const id = `obs_cef_${ctx.cliente_id}_${ctx.legal_entity_id}_${snapshot.accountId}_${dateKey}`;
+  const id = `obs_cef_${ctx.cliente_id}_${ctx.legal_entity_id}_${contaBancariaId}_${dateKey}`;
 
   return {
     id,
     cliente_id: ctx.cliente_id,
     legal_entity_id: ctx.legal_entity_id,
-    conta_bancaria_id: snapshot.accountId,
+    conta_bancaria_id: contaBancariaId,
     valor: snapshot.amount,
     data_referencia: snapshot.date,
     origem: 'cef',

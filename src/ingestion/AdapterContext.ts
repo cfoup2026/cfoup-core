@@ -18,6 +18,9 @@ export interface AdapterContext {
   /** Código original da empresa no sistema-fonte (filial FKN, conta CEF, etc).
    *  Quando informado, vai pra `EventoCaixa.source_company_code`. */
   source_company_code?: string;
+  /** Fallback obrigatório quando parser CEF não consegue extrair `accountId`
+   *  do header do PDF. FKN ignora este campo. */
+  conta_bancaria_id?: string;
   /** Política de calendário operacional. Obrigatória a partir da Etapa 1.3. */
   calendar: CalendarPolicy;
 }
